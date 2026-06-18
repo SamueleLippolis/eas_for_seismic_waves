@@ -5,52 +5,32 @@ import numpy as np
 from src.forward_model import forward_model
 
 
-def generate_synthetic_data(x_true, constants, noise_level=0.02, seed=42):
+def generate_synthetic_data(x_true, constants, noise_config, seed):
     """
     Generate synthetic observed data from the forward model.
 
-    Parameters
-    ----------
-    x_true : dict
-        True hidden parameters:
-        - phi
-        - C
-        - S_b
-        - sigma_b
+    The noise used here follows Giulio's code:
 
-    constants : dict
-        Physical constants.
+        y_obs = y_true * (1 + epsilon)
 
-    noise_level : float
-        Relative Gaussian noise level.
-        Example: 0.02 means 2% noise.
+    where:
 
-    seed : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    y_obs : dict
-        Noisy observations:
-        - Vp
-        - Vs
-        - sigma
-
-    y_true : dict
-        Noise-free forward model output.
-
-    x_true : dict
-        True hidden parameters.
+        epsilon ~ Normal(0, relative_std)
     """
     rng = np.random.default_rng(seed)
 
     y_true = forward_model(x_true, constants)
 
+    noise_type = noise_config["type"]
+    relative_std = noise_config["relative_std"]
+
+    if noise_type != "relative_gaussian":
+        raise ValueError(f"Unsupported noise type: {noise_type}")
+
     y_obs = {}
 
     for key in ["Vp", "Vs", "sigma"]:
-        true_value = y_true[key]
-        noise = rng.normal(loc=0.0, scale=noise_level * true_value)
-        y_obs[key] = true_value + noise
+        epsilon = rng.normal(loc=0.0, scale=relative_std)
+        y_obs[key] = y_true[key] * (1.0 + epsilon)
 
     return y_obs, y_true, x_true

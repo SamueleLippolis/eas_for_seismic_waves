@@ -2,36 +2,43 @@
 
 import numpy as np
 
+from src.config_utils import load_yaml
+
 
 def load_constants_from_yaml(path):
     """
     Load physical constants from a YAML file.
+    Kept for compatibility with previous scripts.
     """
-    import yaml
+    return load_yaml(path)
 
-    with open(path, "r") as f:
-        constants = yaml.safe_load(f)
 
-    return constants
+def parse_model_parameters(x):
+    """
+    Convert model parameters from Giulio-style format to physical fractions.
+
+    Input x:
+        phi_percent : porosity in percent
+        C_percent : clay content in percent
+        S_b_percent : brine saturation in percent
+        sigma_b_inv : inverse brine conductivity
+        xi : empirical shear-modulus correction parameter
+    """
+    phi = x["phi_percent"] / 100.0
+    C = x["C_percent"] / 100.0
+    S_b = x["S_b_percent"] / 100.0
+
+    sigma_b_inv = x["sigma_b_inv"]
+    sigma_b = 1.0 / sigma_b_inv
+
+    xi = x["xi"]
+
+    return phi, C, S_b, sigma_b, xi
 
 
 def wood_fluid_bulk_modulus(S_b, K_brine, K_air):
     """
     Effective fluid bulk modulus using Wood's model.
-
-    Parameters
-    ----------
-    S_b : float
-        Brine saturation.
-    K_brine : float
-        Brine bulk modulus [Pa].
-    K_air : float
-        Air bulk modulus [Pa].
-
-    Returns
-    -------
-    K_f : float
-        Effective fluid bulk modulus [Pa].
     """
     return 1.0 / ((1.0 - S_b) / K_air + S_b / K_brine)
 
@@ -53,17 +60,11 @@ def effective_density(phi, C, S_b, constants):
     return rho
 
 
-def dry_rock_moduli_simple(phi, C, constants):
+def dry_rock_moduli_simple(phi, C, xi, constants):
     """
     Simplified Krief dry-rock model.
 
-    This is a first clean implementation.
-
-    We approximate the solid bulk and shear moduli using Voigt averages,
-    then apply the Krief porosity correction.
-
-    Later, we can replace this with the full Hashin-Shtrikman version
-    from equations A.6-A.9.
+    xi modifies the shear modulus exponent.
     """
     K_q = constants["solids"]["quartz"]["K"]
     K_c = constants["solids"]["clay"]["K"]
@@ -80,7 +81,7 @@ def dry_rock_moduli_simple(phi, C, constants):
     mu_s = beta_q * mu_q + beta_c * mu_c
 
     exponent_K = A_K / (1.0 - phi)
-    exponent_mu = A_mu / (1.0 - phi)
+    exponent_mu = xi * A_mu / (1.0 - phi)
 
     K_m = K_s * (1.0 - phi) ** exponent_K
     mu_m = mu_s * (1.0 - phi) ** exponent_mu
@@ -91,8 +92,6 @@ def dry_rock_moduli_simple(phi, C, constants):
 def gassmann_bulk_modulus_simple(phi, C, S_b, K_m, constants):
     """
     Simplified Gassmann equation for the saturated bulk modulus.
-
-    This uses an effective solid bulk modulus K_s obtained by Voigt average.
     """
     K_q = constants["solids"]["quartz"]["K"]
     K_c = constants["solids"]["clay"]["K"]
@@ -144,35 +143,24 @@ def forward_model(x, constants):
     """
     Complete forward model.
 
-    Parameters
-    ----------
-    x : dict
-        Dictionary with:
-        - phi: porosity
-        - C: clay content
-        - S_b: brine saturation
-        - sigma_b: brine conductivity [S/m]
+    Input x:
+        phi_percent
+        C_percent
+        S_b_percent
+        sigma_b_inv
+        xi
 
-    constants : dict
-        Physical constants loaded from YAML.
-
-    Returns
-    -------
-    output : dict
-        Dictionary with:
-        - Vp: P-wave velocity [m/s]
-        - Vs: S-wave velocity [m/s]
-        - sigma: bulk conductivity [S/m]
-        - rho: bulk density [kg/m^3]
-        - K_G: saturated bulk modulus [Pa]
-        - mu_G: saturated shear modulus [Pa]
+    Output:
+        Vp
+        Vs
+        sigma
+        rho
+        K_G
+        mu_G
     """
-    phi = x["phi"]
-    C = x["C"]
-    S_b = x["S_b"]
-    sigma_b = x["sigma_b"]
+    phi, C, S_b, sigma_b, xi = parse_model_parameters(x)
 
-    K_m, mu_m = dry_rock_moduli_simple(phi, C, constants)
+    K_m, mu_m = dry_rock_moduli_simple(phi, C, xi, constants)
 
     K_G = gassmann_bulk_modulus_simple(phi, C, S_b, K_m, constants)
     mu_G = mu_m

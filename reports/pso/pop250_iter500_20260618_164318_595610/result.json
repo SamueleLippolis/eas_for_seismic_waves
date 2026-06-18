@@ -1,0 +1,69 @@
+{
+    "experiment_name": "single_synthetic_experiment",
+    "optimizer": "pso",
+    "run_time_seconds": 1.1129399359997478,
+    "x_true": {
+        "phi_percent": 41.0,
+        "C_percent": 10.0,
+        "S_b_percent": 90.0,
+        "sigma_b_inv": 0.5,
+        "xi": 2.7
+    },
+    "x_hat": {
+        "phi_percent": 40.25745282660612,
+        "C_percent": 37.063191559036184,
+        "S_b_percent": 86.9986239240798,
+        "sigma_b_inv": 0.5157464320033692,
+        "xi": 2.70763397579378
+    },
+    "y_true": {
+        "Vp": 1133.2000545377837,
+        "Vs": 122.2152753116728,
+        "sigma": 0.2868337752026615
+    },
+    "y_obs": {
+        "Vp": 1136.6531086517468,
+        "Vs": 120.94425587303333,
+        "sigma": 0.2889863226986467
+    },
+    "best_loss": 0.0,
+    "errors": {
+        "phi_percent": {
+            "error": -0.7425471733938807,
+            "abs_error": 0.7425471733938807,
+            "unit": "percentage_points"
+        },
+        "C_percent": {
+            "error": 27.063191559036184,
+            "abs_error": 27.063191559036184,
+            "unit": "percentage_points"
+        },
+        "S_b_percent": {
+            "error": -3.0013760759202057,
+            "abs_error": 3.0013760759202057,
+            "unit": "percentage_points"
+        },
+        "sigma_b_inv": {
+            "error": 3.1492864006738452,
+            "abs_error": 3.1492864006738452,
+            "unit": "relative_percent"
+        },
+        "xi": {
+            "error": 0.2827398442140659,
+            "abs_error": 0.2827398442140659,
+            "unit": "relative_percent"
+        }
+    },
+    "loss_at_true_x": 7.320913391936619,
+    "loss_at_recovered_x": 0.0,
+    "y_hat": {
+        "Vp": 1136.6531086517468,
+        "Vs": 120.94425587303333,
+        "sigma": 0.2889863226986467
+    },
+    "residuals": {
+        "Vp": 0.0,
+        "Vs": 0.0,
+        "sigma": 0.0
+    }
+}
