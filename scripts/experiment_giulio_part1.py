@@ -5,6 +5,7 @@ import sys
 from time import perf_counter
 import csv
 import json
+import numpy as np
 
 import matplotlib.pyplot as plt
 
@@ -12,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
 
 from src.config_utils import load_yaml
-from src.synthetic_data import generate_synthetic_data
+from src.synthetic_data import generate_synthetic_data_from_rng
 from src.objective import objective
 from src.forward_model import forward_model
 from src.parameter_utils import (
@@ -191,19 +192,17 @@ def main():
 
     total_start_time = perf_counter()
 
+    rng_noise = np.random.default_rng(noise_seed)
     for idx, C_true in enumerate(clay_values):
         x_true = dict(base_true_parameters)
         x_true[clay_variable] = C_true
 
-        # Keep same base seed but change it by experiment index.
-        # This gives reproducible but different noise for each clay level.
-        current_noise_seed = noise_seed + idx
-
-        y_obs, y_true, _ = generate_synthetic_data(
-            x_true=x_true,
+        
+        y_obs, y_true, _ = generate_synthetic_data_from_rng(
+           x_true=x_true,
             constants=constants,
             noise_config=noise_config,
-            seed=current_noise_seed,
+            rng=rng_noise,
         )
 
         vector_objective = make_vector_objective(

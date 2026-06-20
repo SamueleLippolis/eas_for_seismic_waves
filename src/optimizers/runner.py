@@ -25,13 +25,7 @@ def run_optimizer(optimizer_name, optimizer_config, vector_objective, bounds):
         return run_pso(
             objective_function=vector_objective,
             bounds=bounds,
-            seed=optimizer_config["seed"],
-            n_particles=optimizer_config["n_particles"],
-            max_iter=optimizer_config["max_iter"],
-            inertia_weight=optimizer_config["inertia_weight"],
-            cognitive_weight=optimizer_config["cognitive_weight"],
-            social_weight=optimizer_config["social_weight"],
-            velocity_scale=optimizer_config["velocity_scale"],
+            **optimizer_config,
         )
 
     if optimizer_name == "cmaes":

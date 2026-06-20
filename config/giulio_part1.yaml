@@ -40,31 +40,36 @@ bounds:
   xi: [2.5, 2.9]
 
 optimizer:
-  name: cmaes
+  name: pso
 
 optimizers:
   simulated_annealing:
     seed: 369
-    max_iter: 5000
-    initial_temperature: 1000.0
-    final_temperature: 0.001
-    step_scale: 0.10
+    max_iter: 200000
+    initial_temperature: 10000.0
+    final_temperature: 0.000001
+    step_scale: 0.20
 
   pso:
     seed: 369
-    n_particles: 250
-    max_iter: 500
-    inertia_weight: 0.7
-    cognitive_weight: 1.5
-    social_weight: 1.5
-    velocity_scale: 0.10
+    n_particles: 2000
+    max_iter: 2500
+    w_start: 0.9
+    w_end: 0.25
+    c_social: 1.49445
+    c_cognitive: 1.49445
+    vmax_abs: 0.20
+    init_mode: uniform
+    init_sigma_y: 0.10
+    boundary_handling: reflect
+    tol: 1.0e-9
 
   cmaes:
     seed: 369
-    population_size: 50
-    max_iter: 500
-    sigma0: 0.25
-
+    population_size: 128
+    max_iter: 1000
+    sigma0: 0.30
+    
 report:
   base_dir: reports
   run_name: clay_sweep
