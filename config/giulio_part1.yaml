@@ -40,7 +40,7 @@ bounds:
   xi: [2.5, 2.9]
 
 optimizer:
-  name: simulated_annealing
+  name: cmaes
 
 optimizers:
   simulated_annealing:

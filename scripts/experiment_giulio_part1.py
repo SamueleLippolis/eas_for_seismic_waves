@@ -67,6 +67,69 @@ def save_clay_error_plot(rows, path):
     plt.savefig(path, dpi=150)
     plt.close()
 
+def save_all_parameter_abs_error_plot(rows, path, optimizer_name):
+    """
+    Save a plot with absolute recovery errors for all five model parameters.
+
+    x-axis:
+        true clay content C [%]
+
+    y-axis:
+        absolute deviation:
+            - percentage points for phi, C, S_b
+            - relative percent for sigma_b_inv, xi
+    """
+    C_true = [row["C_true"] for row in rows]
+
+    metrics = [
+        (
+            "phi_percent_abs_error_percentage_points",
+            r"$|\phi|$",
+            "blue",
+        ),
+        (
+            "C_percent_abs_error_percentage_points",
+            r"$|C|$",
+            "orange",
+        ),
+        (
+            "S_b_percent_abs_error_percentage_points",
+            r"$|S_b|$",
+            "green",
+        ),
+        (
+            "sigma_b_inv_abs_error_relative_percent",
+            r"$|\sigma_b^{-1}|$",
+            "red",
+        ),
+        (
+            "xi_abs_error_relative_percent",
+            r"$|\xi|$",
+            "purple",
+        ),
+    ]
+
+    plt.figure(figsize=(8, 5))
+
+    for key, label, color in metrics:
+        values = [row[key] for row in rows]
+        plt.plot(
+            C_true,
+            values,
+            marker="o",
+            label=label,
+            color=color,
+        )
+
+    plt.xlabel("Clay content C [%]")
+    plt.ylabel("Absolute deviation [pp for φ, C, S_b; % for σ_b⁻¹, ξ]")
+    plt.title(f"Absolute parameter recovery errors - {optimizer_name}")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+
 
 def flatten_errors(errors):
     """
@@ -234,7 +297,16 @@ def main():
     save_json(summary, run_dir / "summary_results.json")
 
     if report_config["save_plot"]:
-        save_clay_error_plot(rows, run_dir / "clay_error_plot.png")
+        save_clay_error_plot(
+            rows,
+            run_dir / "clay_error_plot.png",
+        )
+    
+        save_all_parameter_abs_error_plot(
+            rows=rows,
+            path=run_dir / "all_parameter_abs_errors.png",
+            optimizer_name=optimizer_name,
+        )
 
     print("\nGiulio part 1 completed.")
     print(f"Optimizer: {optimizer_name}")
