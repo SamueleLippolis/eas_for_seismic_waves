@@ -20,7 +20,7 @@ true_parameters:
   xi: 2.7
 
 synthetic_data:
-  seed: 42
+  seed: 369
   noise:
     type: relative_gaussian
     relative_std: 0.01
@@ -38,18 +38,18 @@ bounds:
   xi: [2.5, 2.9]
 
 optimizer:
-  name: cmaes
+  name: pso
 
 optimizers:
   simulated_annealing:
-    seed: 123
+    seed: 369
     max_iter: 5000
     initial_temperature: 1000.0
     final_temperature: 0.001
     step_scale: 0.10
 
   pso:
-    seed: 123
+    seed: 369
     n_particles: 250
     max_iter: 500
     inertia_weight: 0.7
@@ -58,7 +58,7 @@ optimizers:
     velocity_scale: 0.10
 
   cmaes:
-    seed: 123
+    seed: 369
     population_size: 50
     max_iter: 500
     sigma0: 0.25

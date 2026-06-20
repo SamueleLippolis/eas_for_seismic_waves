@@ -1,5 +1,6 @@
 # src/forward_model.py
 
+import math
 import numpy as np
 
 from src.config_utils import load_yaml
@@ -36,112 +37,33 @@ def parse_model_parameters(x):
     return phi, C, S_b, sigma_b, xi
 
 
-def wood_fluid_bulk_modulus(S_b, K_brine, K_air):
+def compute_AK_Amu(C_percent):
     """
-    Effective fluid bulk modulus using Wood's model.
+    Giulio's empirical dependence of Krief parameters on clay content.
     """
-    return 1.0 / ((1.0 - S_b) / K_air + S_b / K_brine)
+    A_K = 0.025 * C_percent + 2.37
+    A_mu = -0.003 * C_percent + 3.14
+
+    return A_K, A_mu
 
 
-def effective_density(phi, C, S_b, constants):
+def invalid_output():
     """
-    Compute bulk density of the saturated sediment.
+    Standard invalid forward-model output.
     """
-    rho_q = constants["solids"]["quartz"]["rho"]
-    rho_c = constants["solids"]["clay"]["rho"]
-    rho_b = constants["fluids"]["brine"]["rho"]
-    rho_a = constants["fluids"]["air"]["rho"]
-
-    rho_s = (1.0 - C) * rho_q + C * rho_c
-    rho_f = (1.0 - S_b) * rho_a + S_b * rho_b
-
-    rho = (1.0 - phi) * rho_s + phi * rho_f
-
-    return rho
-
-
-def dry_rock_moduli_simple(phi, C, xi, constants):
-    """
-    Simplified Krief dry-rock model.
-
-    xi modifies the shear modulus exponent.
-    """
-    K_q = constants["solids"]["quartz"]["K"]
-    K_c = constants["solids"]["clay"]["K"]
-    mu_q = constants["solids"]["quartz"]["mu"]
-    mu_c = constants["solids"]["clay"]["mu"]
-
-    A_K = constants["krief"]["A_K"]
-    A_mu = constants["krief"]["A_mu"]
-
-    beta_q = 1.0 - C
-    beta_c = C
-
-    K_s = beta_q * K_q + beta_c * K_c
-    mu_s = beta_q * mu_q + beta_c * mu_c
-
-    exponent_K = A_K / (1.0 - phi)
-    exponent_mu = xi * A_mu / (1.0 - phi)
-
-    K_m = K_s * (1.0 - phi) ** exponent_K
-    mu_m = mu_s * (1.0 - phi) ** exponent_mu
-
-    return K_m, mu_m
-
-
-def gassmann_bulk_modulus_simple(phi, C, S_b, K_m, constants):
-    """
-    Simplified Gassmann equation for the saturated bulk modulus.
-    """
-    K_q = constants["solids"]["quartz"]["K"]
-    K_c = constants["solids"]["clay"]["K"]
-
-    K_brine = constants["fluids"]["brine"]["K"]
-    K_air = constants["fluids"]["air"]["K"]
-
-    beta_q = 1.0 - C
-    beta_c = C
-
-    K_s = beta_q * K_q + beta_c * K_c
-    K_f = wood_fluid_bulk_modulus(S_b, K_brine, K_air)
-
-    numerator = (1.0 - K_m / K_s) ** 2
-    denominator = (
-        phi / K_f
-        + (1.0 - phi) / K_s
-        - K_m / (K_s ** 2)
-    )
-
-    K_G = K_m + numerator / denominator
-
-    return K_G
-
-
-def electrical_conductivity(phi, C, S_b, sigma_b, constants):
-    """
-    Bulk electrical conductivity using the CRIM model.
-    """
-    sigma_q = constants["solids"]["quartz"]["sigma"]
-    sigma_c = constants["solids"]["clay"]["sigma"]
-    sigma_a = constants["fluids"]["air"]["sigma"]
-
-    gamma = constants["conductivity"]["gamma"]
-
-    term = (
-        (1.0 - phi) * (1.0 - C) * sigma_q ** gamma
-        + (1.0 - phi) * C * sigma_c ** gamma
-        + phi * S_b * sigma_b ** gamma
-        + phi * (1.0 - S_b) * sigma_a ** gamma
-    )
-
-    sigma = term ** (1.0 / gamma)
-
-    return sigma
+    return {
+        "Vp": np.nan,
+        "Vs": np.nan,
+        "sigma": np.nan,
+        "rho": np.nan,
+        "K_G": np.nan,
+        "mu_G": np.nan,
+    }
 
 
 def forward_model(x, constants):
     """
-    Complete forward model.
+    Forward model aligned with Giulio's notebook.
 
     Input x:
         phi_percent
@@ -158,25 +80,197 @@ def forward_model(x, constants):
         K_G
         mu_G
     """
-    phi, C, S_b, sigma_b, xi = parse_model_parameters(x)
+    eps = 1e-18
 
-    K_m, mu_m = dry_rock_moduli_simple(phi, C, xi, constants)
+    try:
+        phi, C, S_b, sigma_b, xi = parse_model_parameters(x)
+    except Exception:
+        return invalid_output()
 
-    K_G = gassmann_bulk_modulus_simple(phi, C, S_b, K_m, constants)
+    C_percent = x["C_percent"]
+
+    if not np.isfinite(sigma_b) or sigma_b <= 0:
+        return invalid_output()
+
+    if phi < 0 or phi >= 1:
+        return invalid_output()
+
+    # -------------------------
+    # Constants
+    # -------------------------
+    K_q = constants["solids"]["quartz"]["K"]
+    mu_q = constants["solids"]["quartz"]["mu"]
+    rho_q = constants["solids"]["quartz"]["rho"]
+    sigma_q = constants["solids"]["quartz"]["sigma"]
+
+    K_c = constants["solids"]["clay"]["K"]
+    mu_c = constants["solids"]["clay"]["mu"]
+    rho_c = constants["solids"]["clay"]["rho"]
+    sigma_c = constants["solids"]["clay"]["sigma"]
+
+    K_b = constants["fluids"]["brine"]["K"]
+    rho_b = constants["fluids"]["brine"]["rho"]
+
+    K_a = constants["fluids"]["air"]["K"]
+    rho_a = constants["fluids"]["air"]["rho"]
+    sigma_a = constants["fluids"]["air"]["sigma"]
+
+    gamma = constants["conductivity"]["gamma"]
+
+    # -------------------------
+    # Bulk density
+    # -------------------------
+    rho_s = (1.0 - C) * rho_q + C * rho_c
+    rho_f = (1.0 - S_b) * rho_a + S_b * rho_b
+    rho_bulk = (1.0 - phi) * rho_s + phi * rho_f
+
+    if rho_bulk <= 0.0 or not np.isfinite(rho_bulk):
+        return invalid_output()
+
+    # -------------------------
+    # Solid fractions
+    # -------------------------
+    beta_q = 1.0 - C
+    beta_c = C
+
+    K_V = beta_q * K_q + beta_c * K_c
+    mu_V = beta_q * mu_q + beta_c * mu_c
+
+    if abs(K_V) < eps or abs(mu_V) < eps:
+        return invalid_output()
+
+    # -------------------------
+    # Hashin-Shtrikman-style averages
+    # -------------------------
+    K_max = max(K_q, K_c)
+    K_min = min(K_q, K_c)
+
+    mu_max = max(mu_q, mu_c)
+    mu_min = min(mu_q, mu_c)
+
+    dK = K_c - K_q
+    dmu = mu_c - mu_q
+
+    if abs(dK) < eps or abs(dmu) < eps:
+        return invalid_output()
+
+    denom_plus = (1.0 / dK) + beta_q / (K_q + (4.0 / 3.0) * mu_max)
+    denom_minus = (1.0 / dK) + beta_q / (K_q + (4.0 / 3.0) * mu_min)
+
+    if abs(denom_plus) < eps or abs(denom_minus) < eps:
+        return invalid_output()
+
+    K_HS_plus = K_q + (1.0 - beta_q) / denom_plus
+    K_HS_minus = K_q + (1.0 - beta_q) / denom_minus
+    K_HS = 0.5 * (K_HS_plus + K_HS_minus)
+
+    denom_hq = K_max + 2.0 * mu_max
+    denom_hc = K_min + 2.0 * mu_min
+
+    if abs(denom_hq) < eps or abs(denom_hc) < eps:
+        return invalid_output()
+
+    hs_shear_q = mu_q + (mu_max / 6.0) * (
+        (9.0 * K_max + 8.0 * mu_max) / denom_hq
+    )
+
+    hs_shear_c = mu_q + (mu_min / 6.0) * (
+        (9.0 * K_min + 8.0 * mu_min) / denom_hc
+    )
+
+    denom_mu_plus = (1.0 / dmu) + beta_q / hs_shear_q
+    denom_mu_minus = (1.0 / dmu) + beta_q / hs_shear_c
+
+    if abs(denom_mu_plus) < eps or abs(denom_mu_minus) < eps:
+        return invalid_output()
+
+    mu_HS_plus = mu_q + (1.0 - beta_q) / denom_mu_plus
+    mu_HS_minus = mu_q + (1.0 - beta_q) / denom_mu_minus
+    mu_HS = 0.5 * (mu_HS_plus + mu_HS_minus)
+
+    # -------------------------
+    # Krief parameters depending on C
+    # -------------------------
+    A_K, A_mu = compute_AK_Amu(C_percent)
+
+    denom = 1.0 - phi
+
+    if denom <= 1e-15:
+        return invalid_output()
+
+    exponent_bulk = A_K / denom
+    exponent_shear = xi * A_mu / denom
+
+    one_minus_phi = 1.0 - phi
+    bulk_factor = one_minus_phi ** exponent_bulk
+    shear_factor = one_minus_phi ** exponent_shear
+
+    K_m_q = (K_HS / K_V) * beta_q * K_q * bulk_factor
+    K_m_c = (K_HS / K_V) * beta_c * K_c * bulk_factor
+    K_m = K_m_q + K_m_c
+
+    mu_m_q = (mu_HS / mu_V) * beta_q * mu_q * shear_factor
+    mu_m_c = (mu_HS / mu_V) * beta_c * mu_c * shear_factor
+    mu_m = mu_m_q + mu_m_c
+
+    # -------------------------
+    # Fluid bulk modulus
+    # -------------------------
+    denom_Kf = (1.0 - S_b) / K_a + S_b / K_b
+
+    if abs(denom_Kf) < eps:
+        return invalid_output()
+
+    K_f = 1.0 / denom_Kf
+
+    # -------------------------
+    # Generalized Gassmann
+    # -------------------------
+    alpha_q = beta_q - K_m_q / K_q
+    alpha_c = beta_c - K_m_c / K_c
+
+    phi_q_prime = alpha_q - beta_q * phi
+    phi_c_prime = alpha_c - beta_c * phi
+
+    M_inv = (phi_q_prime / K_q) + (phi_c_prime / K_c) + (phi / K_f)
+
+    if not np.isfinite(M_inv) or abs(M_inv) < eps:
+        return invalid_output()
+
+    M = 1.0 / M_inv
+
+    K_G = K_m + (alpha_q + alpha_c) ** 2 * M
     mu_G = mu_m
 
-    rho = effective_density(phi, C, S_b, constants)
+    if K_G <= 0 or mu_G <= 0:
+        return invalid_output()
 
-    Vp = np.sqrt((K_G + 4.0 * mu_G / 3.0) / rho)
-    Vs = np.sqrt(mu_G / rho)
+    # -------------------------
+    # Seismic velocities
+    # -------------------------
+    Vp = math.sqrt((K_G + (4.0 / 3.0) * mu_G) / rho_bulk)
+    Vs = math.sqrt(mu_G / rho_bulk)
 
-    sigma = electrical_conductivity(phi, C, S_b, sigma_b, constants)
+    # -------------------------
+    # Electrical conductivity
+    # -------------------------
+    term_sigma = (
+        (1.0 - phi) * (1.0 - C) * (sigma_q ** gamma)
+        + (1.0 - phi) * C * (sigma_c ** gamma)
+        + phi * S_b * (sigma_b ** gamma)
+        + phi * (1.0 - S_b) * (sigma_a ** gamma)
+    )
+
+    if not np.isfinite(term_sigma) or term_sigma <= 0.0:
+        return invalid_output()
+
+    sigma_bulk = term_sigma ** (1.0 / gamma)
 
     return {
         "Vp": Vp,
         "Vs": Vs,
-        "sigma": sigma,
-        "rho": rho,
+        "sigma": sigma_bulk,
+        "rho": rho_bulk,
         "K_G": K_G,
         "mu_G": mu_G,
     }

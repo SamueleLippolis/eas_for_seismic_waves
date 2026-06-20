@@ -1,0 +1,83 @@
+constants_path: /home/samuele/projects/eas_for_seismic_waves/config/constants.yaml
+experiment_path: /home/samuele/projects/eas_for_seismic_waves/config/giulio_part1.yaml
+experiment_config:
+  experiment:
+    name: giulio_part1_clay_sweep
+  variables:
+    order:
+    - phi_percent
+    - C_percent
+    - S_b_percent
+    - sigma_b_inv
+    - xi
+  base_true_parameters:
+    phi_percent: 41.0
+    S_b_percent: 90.0
+    sigma_b_inv: 0.5
+    xi: 2.7
+  clay_sweep:
+    variable: C_percent
+    values:
+    - 10.0
+    - 20.0
+    - 30.0
+    - 40.0
+    - 50.0
+    - 60.0
+    - 70.0
+    - 80.0
+    - 90.0
+    - 100.0
+  synthetic_data:
+    seed: 369
+    noise:
+      type: relative_gaussian
+      relative_std: 0.01
+  objective:
+    weights:
+      W1: 1.0
+      W2: 100.0
+  bounds:
+    phi_percent:
+    - 0.0
+    - 70.0
+    C_percent:
+    - 0.0
+    - 100.0
+    S_b_percent:
+    - 80.0
+    - 100.0
+    sigma_b_inv:
+    - 0.2
+    - 25.0
+    xi:
+    - 2.5
+    - 2.9
+  optimizer:
+    name: cmaes
+  optimizers:
+    simulated_annealing:
+      seed: 369
+      max_iter: 5000
+      initial_temperature: 1000.0
+      final_temperature: 0.001
+      step_scale: 0.1
+    pso:
+      seed: 369
+      n_particles: 250
+      max_iter: 500
+      inertia_weight: 0.7
+      cognitive_weight: 1.5
+      social_weight: 1.5
+      velocity_scale: 0.1
+    cmaes:
+      seed: 369
+      population_size: 50
+      max_iter: 500
+      sigma0: 0.25
+  report:
+    base_dir: reports
+    run_name: clay_sweep
+    save_config: true
+    save_history: false
+    save_plot: true

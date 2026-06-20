@@ -1,0 +1,247 @@
+# scripts/experiment_giulio_part1.py
+
+from pathlib import Path
+import sys
+from time import perf_counter
+import csv
+import json
+
+import matplotlib.pyplot as plt
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT))
+
+from src.config_utils import load_yaml
+from src.synthetic_data import generate_synthetic_data
+from src.objective import objective
+from src.forward_model import forward_model
+from src.parameter_utils import (
+    bounds_dict_to_list,
+    x_dict_to_vector,
+    x_vector_to_dict,
+)
+from src.optimizers.common import make_vector_objective
+from src.optimizers.runner import run_optimizer
+from src.experiment_utils import compute_parameter_errors
+from src.report_utils import (
+    create_run_directory,
+    save_yaml,
+    save_json,
+)
+
+
+CONSTANTS_PATH = ROOT / "config" / "constants.yaml"
+EXPERIMENT_PATH = ROOT / "config" / "giulio_part1.yaml"
+
+
+def save_summary_csv(rows, path):
+    """
+    Save Giulio part 1 summary rows as CSV.
+    """
+    if len(rows) == 0:
+        return
+
+    fieldnames = list(rows[0].keys())
+
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def save_clay_error_plot(rows, path):
+    """
+    Save a simple plot of C recovery error against true clay content.
+    """
+    C_true = [row["C_true"] for row in rows]
+    C_error = [row["C_percent_error_percentage_points"] for row in rows]
+
+    plt.figure()
+    plt.plot(C_true, C_error, marker="o")
+    plt.axhline(0.0, linestyle="--")
+    plt.xlabel("True clay content C [%]")
+    plt.ylabel("C recovery error [percentage points]")
+    plt.title("Clay recovery error")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+
+
+def flatten_errors(errors):
+    """
+    Convert nested error dictionary into flat columns.
+    """
+    flat = {}
+
+    for variable_name, error_info in errors.items():
+        unit = error_info["unit"]
+
+        if unit == "percentage_points":
+            suffix = "percentage_points"
+        elif unit == "relative_percent":
+            suffix = "relative_percent"
+        else:
+            suffix = unit
+
+        flat[f"{variable_name}_error_{suffix}"] = error_info["error"]
+        flat[f"{variable_name}_abs_error_{suffix}"] = error_info["abs_error"]
+
+    return flat
+
+
+def main():
+    constants = load_yaml(CONSTANTS_PATH)
+    config = load_yaml(EXPERIMENT_PATH)
+
+    variable_order = config["variables"]["order"]
+    bounds = bounds_dict_to_list(config["bounds"], variable_order)
+
+    optimizer_name = config["optimizer"]["name"]
+    optimizer_config = config["optimizers"][optimizer_name]
+    report_config = config["report"]
+
+    run_dir = create_run_directory(
+        base_dir=ROOT / report_config["base_dir"],
+        category=f"giulio_part1/{optimizer_name}",
+        run_name=report_config["run_name"],
+    )
+
+    full_config = {
+        "constants_path": str(CONSTANTS_PATH),
+        "experiment_path": str(EXPERIMENT_PATH),
+        "experiment_config": config,
+    }
+
+    if report_config["save_config"]:
+        save_yaml(full_config, run_dir / "run_config.yaml")
+
+    base_true_parameters = config["base_true_parameters"]
+    clay_variable = config["clay_sweep"]["variable"]
+    clay_values = config["clay_sweep"]["values"]
+
+    noise_seed = config["synthetic_data"]["seed"]
+    noise_config = config["synthetic_data"]["noise"]
+    weights = config["objective"]["weights"]
+
+    rows = []
+
+    total_start_time = perf_counter()
+
+    for idx, C_true in enumerate(clay_values):
+        x_true = dict(base_true_parameters)
+        x_true[clay_variable] = C_true
+
+        # Keep same base seed but change it by experiment index.
+        # This gives reproducible but different noise for each clay level.
+        current_noise_seed = noise_seed + idx
+
+        y_obs, y_true, _ = generate_synthetic_data(
+            x_true=x_true,
+            constants=constants,
+            noise_config=noise_config,
+            seed=current_noise_seed,
+        )
+
+        vector_objective = make_vector_objective(
+            y_obs=y_obs,
+            constants=constants,
+            weights=weights,
+            variable_order=variable_order,
+        )
+
+        x_true_vector = x_dict_to_vector(x_true, variable_order)
+        loss_at_true_x = vector_objective(x_true_vector)
+
+        start_time = perf_counter()
+
+        optimizer_result = run_optimizer(
+            optimizer_name=optimizer_name,
+            optimizer_config=optimizer_config,
+            vector_objective=vector_objective,
+            bounds=bounds,
+        )
+
+        run_time_seconds = perf_counter() - start_time
+
+        x_hat = x_vector_to_dict(
+            optimizer_result["best_x_vector"],
+            variable_order,
+        )
+
+        y_hat = forward_model(x_hat, constants)
+
+        residuals = {
+            key: float(y_hat[key] - y_obs[key])
+            for key in ["Vp", "Vs", "sigma"]
+        }
+
+        errors = compute_parameter_errors(
+            x_hat=x_hat,
+            x_true=x_true,
+        )
+
+        flat_errors = flatten_errors(errors)
+
+        row = {
+            "experiment_index": idx,
+            "C_true": C_true,
+            "optimizer": optimizer_name,
+            "run_time_seconds": run_time_seconds,
+            "loss_at_true_x": float(loss_at_true_x),
+            "loss_at_recovered_x": float(optimizer_result["best_loss"]),
+            "Vp_true": float(y_true["Vp"]),
+            "Vs_true": float(y_true["Vs"]),
+            "sigma_true": float(y_true["sigma"]),
+            "Vp_obs": float(y_obs["Vp"]),
+            "Vs_obs": float(y_obs["Vs"]),
+            "sigma_obs": float(y_obs["sigma"]),
+            "Vp_hat": float(y_hat["Vp"]),
+            "Vs_hat": float(y_hat["Vs"]),
+            "sigma_hat": float(y_hat["sigma"]),
+            "Vp_residual": residuals["Vp"],
+            "Vs_residual": residuals["Vs"],
+            "sigma_residual": residuals["sigma"],
+        }
+
+        for name in variable_order:
+            row[f"{name}_true"] = float(x_true[name])
+            row[f"{name}_hat"] = float(x_hat[name])
+
+        row.update(flat_errors)
+
+        rows.append(row)
+
+        print(
+            f"[{idx + 1}/{len(clay_values)}] "
+            f"C_true={C_true:.1f}, "
+            f"loss_true={loss_at_true_x:.6g}, "
+            f"loss_hat={optimizer_result['best_loss']:.6g}, "
+            f"C_hat={x_hat['C_percent']:.3f}"
+        )
+
+    total_run_time_seconds = perf_counter() - total_start_time
+
+    summary = {
+        "experiment_name": config["experiment"]["name"],
+        "optimizer": optimizer_name,
+        "n_experiments": len(rows),
+        "total_run_time_seconds": total_run_time_seconds,
+        "rows": rows,
+    }
+
+    save_summary_csv(rows, run_dir / "summary_results.csv")
+    save_json(summary, run_dir / "summary_results.json")
+
+    if report_config["save_plot"]:
+        save_clay_error_plot(rows, run_dir / "clay_error_plot.png")
+
+    print("\nGiulio part 1 completed.")
+    print(f"Optimizer: {optimizer_name}")
+    print(f"Total run time: {total_run_time_seconds:.3f} seconds")
+    print("\nReport saved to:")
+    print(f"  {run_dir}")
+
+
+if __name__ == "__main__":
+    main()

@@ -2,30 +2,26 @@
 
 solids:
   quartz:
-    K: 3.70e+10
-    mu: 4.40e+10
-    rho: 2650.0
+    K: 3.73e+10
+    mu: 4.43e+10
+    rho: 2600.0
     sigma: 1.0e-6
 
   clay:
-    K: 2.50e+10
-    mu: 9.0e+9
-    rho: 2580.0
-    sigma: 0.05
+    K: 2.09e+10
+    mu: 6.90e+9
+    rho: 2650.0
+    sigma: 0.1
 
 fluids:
   brine:
-    K: 2.20e+9
-    rho: 1025.0
+    K: 2.25e+9
+    rho: 1030.0
 
   air:
-    K: 1.0e+5
+    K: 7.60e+4
     rho: 1.2
-    sigma: 1.0e-12
-
-krief:
-  A_K: 3.0
-  A_mu: 3.0
+    sigma: 1.0e-4
 
 conductivity:
   gamma: 0.5
