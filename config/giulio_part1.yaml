@@ -40,9 +40,21 @@ bounds:
   xi: [2.5, 2.9]
 
 optimizer:
-  name: pso
+  name: simulated_annealing_giulio
 
 optimizers:
+  simulated_annealing_giulio:
+    seed_base: 246
+    seed_add_clay_offset: true
+    n_iters: 1000000
+    T0: 10000.0
+    step_frac: 0.1
+    alpha: 0.85
+    cooling_interval: 2000
+    tol: 1.0e-9
+    start: midpoint
+    history_interval: 1000
+
   simulated_annealing:
     seed: 369
     max_iter: 200000

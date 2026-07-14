@@ -5,6 +5,7 @@ import sys
 from time import perf_counter
 import csv
 import json
+from jupyterlab_server import config
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -162,7 +163,7 @@ def main():
     bounds = bounds_dict_to_list(config["bounds"], variable_order)
 
     optimizer_name = config["optimizer"]["name"]
-    optimizer_config = config["optimizers"][optimizer_name]
+
     report_config = config["report"]
 
     run_dir = create_run_directory(
@@ -216,6 +217,18 @@ def main():
         loss_at_true_x = vector_objective(x_true_vector)
 
         start_time = perf_counter()
+
+        optimizer_config = dict(config["optimizers"][optimizer_name])
+
+        if optimizer_name == "simulated_annealing_giulio":
+            seed_base = optimizer_config.pop("seed_base")
+            seed_add_clay_offset = optimizer_config.pop("seed_add_clay_offset", False)
+
+            if seed_add_clay_offset:
+                clay_offset = int(C_true - 10.0)
+                optimizer_config["seed"] = int(seed_base + clay_offset)
+            else:
+                optimizer_config["seed"] = int(seed_base)
 
         optimizer_result = run_optimizer(
             optimizer_name=optimizer_name,
