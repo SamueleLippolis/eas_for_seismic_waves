@@ -132,7 +132,7 @@ def save_all_parameter_abs_error_plot(rows, path, optimizer_name):
     plt.savefig(path, dpi=150)
     plt.close()
 
-def save_all_parameter_signed_error_plot(rows, path):
+def save_all_parameter_signed_error_plot(rows, path, optimizer_name):
     import matplotlib.pyplot as plt
 
     C_values = [row["C_true"] for row in rows]
@@ -143,19 +143,24 @@ def save_all_parameter_signed_error_plot(rows, path):
     err_sigma_b_inv = [row["sigma_b_inv_error_relative_percent"] for row in rows]
     err_xi = [row["xi_error_relative_percent"] for row in rows]
 
-    plt.figure()
-    plt.plot(C_values, err_phi, label="phi")
-    plt.plot(C_values, err_C, label="C")
-    plt.plot(C_values, err_Sb, label="S_b")
-    plt.plot(C_values, err_sigma_b_inv, label="sigma_b_inv")
-    plt.plot(C_values, err_xi, label="xi")
+    optimizer_label = optimizer_name.replace("_", " ")
 
-    plt.xlabel("Clay Content (%)")
-    plt.ylabel("Deviation (PHI,C,Sb in pp; ROb,xi in %)")
-    plt.title("SECOND INVERSION: Parameter Errors vs Clay Content")
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(C_values, err_phi, marker="o", linestyle="-", label=r"$\phi$")
+    plt.plot(C_values, err_C, marker="o", linestyle="-", label=r"$C$")
+    plt.plot(C_values, err_Sb, marker="o", linestyle="-", label=r"$S_b$")
+    plt.plot(C_values, err_sigma_b_inv, marker="o", linestyle="-", label=r"$\sigma_b^{-1}$")
+    plt.plot(C_values, err_xi, marker="o", linestyle="-", label=r"$\xi$")
+
+    plt.axhline(0.0, linewidth=1.0)
+
+    plt.xlabel("Clay content C [%]")
+    plt.ylabel(r"Signed deviation [pp for $\phi$, $C$, $S_b$; % for $\sigma_b^{-1}$, $\xi$]")
+    plt.title(f"Signed parameter recovery errors - {optimizer_label}")
+
     plt.legend()
     plt.grid(True)
-
     plt.savefig(path, dpi=300, bbox_inches="tight")
     plt.close()
 
@@ -246,7 +251,7 @@ def main():
 
         optimizer_config = dict(config["optimizers"][optimizer_name])
 
-        if optimizer_name == "simulated_annealing_giulio":
+        if optimizer_name in ["simulated_annealing_giulio", "pso_giulio"]:
             seed_base = optimizer_config.pop("seed_base")
             seed_add_clay_offset = optimizer_config.pop("seed_add_clay_offset", False)
 
@@ -339,12 +344,13 @@ def main():
             rows,
             run_dir / "clay_error_plot.png",
         )
-    
+
         save_all_parameter_signed_error_plot(
             rows=rows,
             path=run_dir / "all_parameter_signed_errors.png",
+            optimizer_name=optimizer_name,
         )
-    
+
         save_all_parameter_abs_error_plot(
             rows=rows,
             path=run_dir / "all_parameter_abs_errors.png",

@@ -1,5 +1,6 @@
 # src/optimizers/runner.py
 
+from src.optimizers.pso_giulio import run_pso_giulio
 from src.optimizers.simulated_annealing_giulio import run_simulated_annealing_giulio
 from src.optimizers.simulated_annealing_basic import run_simulated_annealing
 from src.optimizers.pso_basic import run_pso
@@ -45,11 +46,26 @@ def run_optimizer(optimizer_name, optimizer_config, vector_objective, bounds):
             bounds=bounds,
             **optimizer_config,
         )
-    
+
         return {
             "best_x_vector": best_x_vector,
             "best_loss": best_loss,
             "history": history,
+        }
+    
+    if optimizer_name == "pso_giulio":
+        best_x_vector, best_loss, history, stop_iter, stop_reason = run_pso_giulio(
+            objective_function=vector_objective,
+            bounds=bounds,
+            **optimizer_config,
+        )
+
+        return {
+            "best_x_vector": best_x_vector,
+            "best_loss": best_loss,
+            "history": history,
+            "stop_iter": stop_iter,
+            "stop_reason": stop_reason,
         }
 
     raise ValueError(f"Unknown optimizer: {optimizer_name}")
