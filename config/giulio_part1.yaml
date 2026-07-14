@@ -22,7 +22,7 @@ clay_sweep:
   values: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 
 synthetic_data:
-  seed: 3699 # 369 for SA and PSO, 3699 for CMAES 
+  seed: 369 
   noise:
     type: relative_gaussian
     relative_std: 0.01

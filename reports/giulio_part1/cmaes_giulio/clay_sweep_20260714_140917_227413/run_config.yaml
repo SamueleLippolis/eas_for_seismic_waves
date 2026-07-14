@@ -29,7 +29,7 @@ experiment_config:
     - 90.0
     - 100.0
   synthetic_data:
-    seed: 3699
+    seed: 369
     noise:
       type: relative_gaussian
       relative_std: 0.01
