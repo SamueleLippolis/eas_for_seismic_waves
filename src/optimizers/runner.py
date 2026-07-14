@@ -1,8 +1,8 @@
 # src/optimizers/runner.py
 
-from src.optimizers.simulated_annealing import run_simulated_annealing
-from src.optimizers.pso import run_pso
-from src.optimizers.cmaes import run_cmaes
+from src.optimizers.simulated_annealing_basic import run_simulated_annealing
+from src.optimizers.pso_basic import run_pso
+from src.optimizers.cmaes_basic import run_cmaes
 
 
 def run_optimizer(optimizer_name, optimizer_config, vector_objective, bounds):
