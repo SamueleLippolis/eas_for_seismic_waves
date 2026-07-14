@@ -22,7 +22,7 @@ clay_sweep:
   values: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 
 synthetic_data:
-  seed: 369
+  seed: 3699 # 369 for SA and PSO, 3699 for CMAES 
   noise:
     type: relative_gaussian
     relative_std: 0.01
@@ -40,7 +40,7 @@ bounds:
   xi: [2.5, 2.9]
 
 optimizer:
-  name: pso_giulio
+  name: cmaes_giulio
 
 optimizers:
   simulated_annealing_giulio:
@@ -87,6 +87,16 @@ optimizers:
     initial_temperature: 10000.0
     final_temperature: 0.000001
     step_scale: 0.20
+  
+  cmaes_giulio:
+    seed_base: 2466
+    seed_add_clay_offset: true
+
+    max_evals: 60000
+    popsize: 64
+    init_sigma_y: 0.5
+    init_mode: 1
+    tol: 1.0e-12
 
   pso:
     seed: 369

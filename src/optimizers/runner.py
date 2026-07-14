@@ -1,5 +1,6 @@
 # src/optimizers/runner.py
 
+from src.optimizers.cmaes_giulio import run_cmaes_giulio
 from src.optimizers.pso_giulio import run_pso_giulio
 from src.optimizers.simulated_annealing_giulio import run_simulated_annealing_giulio
 from src.optimizers.simulated_annealing_basic import run_simulated_annealing
@@ -66,6 +67,20 @@ def run_optimizer(optimizer_name, optimizer_config, vector_objective, bounds):
             "history": history,
             "stop_iter": stop_iter,
             "stop_reason": stop_reason,
+        }
+
+    if optimizer_name == "cmaes_giulio":
+        best_x_vector, best_loss, history, evaluations = run_cmaes_giulio(
+            objective_function=vector_objective,
+            bounds=bounds,
+            **optimizer_config,
+        )
+
+        return {
+            "best_x_vector": best_x_vector,
+            "best_loss": best_loss,
+            "history": history,
+            "evaluations": evaluations,
         }
 
     raise ValueError(f"Unknown optimizer: {optimizer_name}")

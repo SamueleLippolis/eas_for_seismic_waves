@@ -251,7 +251,7 @@ def main():
 
         optimizer_config = dict(config["optimizers"][optimizer_name])
 
-        if optimizer_name in ["simulated_annealing_giulio", "pso_giulio"]:
+        if optimizer_name in ["simulated_annealing_giulio", "pso_giulio", "cmaes_giulio"]:
             seed_base = optimizer_config.pop("seed_base")
             seed_add_clay_offset = optimizer_config.pop("seed_add_clay_offset", False)
 
