@@ -132,6 +132,32 @@ def save_all_parameter_abs_error_plot(rows, path, optimizer_name):
     plt.savefig(path, dpi=150)
     plt.close()
 
+def save_all_parameter_signed_error_plot(rows, path):
+    import matplotlib.pyplot as plt
+
+    C_values = [row["C_true"] for row in rows]
+
+    err_phi = [row["phi_percent_error_percentage_points"] for row in rows]
+    err_C = [row["C_percent_error_percentage_points"] for row in rows]
+    err_Sb = [row["S_b_percent_error_percentage_points"] for row in rows]
+    err_sigma_b_inv = [row["sigma_b_inv_error_relative_percent"] for row in rows]
+    err_xi = [row["xi_error_relative_percent"] for row in rows]
+
+    plt.figure()
+    plt.plot(C_values, err_phi, label="phi")
+    plt.plot(C_values, err_C, label="C")
+    plt.plot(C_values, err_Sb, label="S_b")
+    plt.plot(C_values, err_sigma_b_inv, label="sigma_b_inv")
+    plt.plot(C_values, err_xi, label="xi")
+
+    plt.xlabel("Clay Content (%)")
+    plt.ylabel("Deviation (PHI,C,Sb in pp; ROb,xi in %)")
+    plt.title("SECOND INVERSION: Parameter Errors vs Clay Content")
+    plt.legend()
+    plt.grid(True)
+
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close()
 
 def flatten_errors(errors):
     """
@@ -312,6 +338,11 @@ def main():
         save_clay_error_plot(
             rows,
             run_dir / "clay_error_plot.png",
+        )
+    
+        save_all_parameter_signed_error_plot(
+            rows=rows,
+            path=run_dir / "all_parameter_signed_errors.png",
         )
     
         save_all_parameter_abs_error_plot(
