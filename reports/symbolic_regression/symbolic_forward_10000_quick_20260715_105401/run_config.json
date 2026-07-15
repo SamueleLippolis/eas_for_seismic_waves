@@ -1,0 +1,48 @@
+{
+  "experiment": {
+    "name": "symbolic_forward_10000_quick",
+    "output_dir": "reports/symbolic_regression"
+  },
+  "dataset": {
+    "path": "datasets/symbolic_regression/symbolic_forward_10000.parquet"
+  },
+  "features": {
+    "source_columns": [
+      "phi_percent",
+      "C_percent",
+      "S_b_percent",
+      "sigma_b_inv",
+      "xi"
+    ],
+    "model_names": [
+      "phi",
+      "C",
+      "Sb",
+      "rb",
+      "xi"
+    ]
+  },
+  "targets": [
+    "sigma"
+  ],
+  "pysr": {
+    "niterations": 50,
+    "populations": 20,
+    "population_size": 30,
+    "maxsize": 25,
+    "model_selection": "best",
+    "random_state": 123,
+    "binary_operators": [
+      "+",
+      "-",
+      "*",
+      "/"
+    ],
+    "unary_operators": [
+      "sqrt",
+      "log",
+      "exp",
+      "square"
+    ]
+  }
+}
