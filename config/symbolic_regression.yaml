@@ -1,6 +1,6 @@
 experiment:
-  name: symbolic_forward_10000_quick
-  output_dir: reports/symbolic_regression
+  name: symbolic_forward_10000_serious
+  output_dir: reports/symbolic_regression/phase2
 
 dataset:
   path: datasets/symbolic_regression/symbolic_forward_10000.parquet
@@ -27,10 +27,10 @@ targets:
 
 
 pysr:
-  niterations: 50
-  populations: 20
+  niterations: 500 # q50 s500
+  populations: 40 # q20 s40 
   population_size: 30
-  maxsize: 25
+  maxsize: 35 # q25 s35
   model_selection: best
   random_state: 123
 
@@ -42,6 +42,6 @@ pysr:
 
   unary_operators:
     - "sqrt"
-    - "log"
-    - "exp"
+    #- "log"
+    #- "exp"
     - "square"
