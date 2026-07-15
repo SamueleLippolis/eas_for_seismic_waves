@@ -19,7 +19,8 @@ from src.forward_model import forward_model
 from src.objective import objective
 from src.experiment_utils import compute_parameter_errors
 from src.symbolic_surrogate import SymbolicForwardSurrogate
-from src.symbolic_inverse import run_symbolic_multistart_least_squares
+from src.symbolic_inverse import run_symbolic_multistart_least_squares, run_exact_refinement_from_x
+
 
 
 CONFIG_PATH = ROOT / "config" / "symbolic_inverse.yaml"
@@ -214,23 +215,56 @@ def main():
 
         runtime = perf_counter() - start
 
-        x_hat = best_run["x_hat"]
+        x_before_refinement = best_run["x_hat"]
 
-        y_hat_symbolic = {
-            "Vp": best_run["Vp_hat_symbolic"],
-            "Vs": best_run["Vs_hat_symbolic"],
-            "sigma": best_run["sigma_hat_symbolic"],
-        }
+        symbolic_loss_before_refinement = float(best_run["symbolic_scalar_loss"])
+        exact_loss_before_refinement = float(best_run["exact_loss_at_candidate"])
 
-        y_hat_exact = {
-            "Vp": best_run["Vp_hat_exact"],
-            "Vs": best_run["Vs_hat_exact"],
-            "sigma": best_run["sigma_hat_exact"],
-        }
+        refinement_config = config.get("exact_refinement", {"enabled": False})
 
-        symbolic_loss = float(best_run["symbolic_scalar_loss"])
-        exact_loss_at_recovered_x = float(best_run["exact_loss_at_candidate"])
-        #
+        if refinement_config.get("enabled", False):
+            refinement_result = run_exact_refinement_from_x(
+                x_start=x_before_refinement,
+                y_obs=y_obs,
+                bounds_dict=bounds,
+                variable_order=variable_order,
+                weights=weights,
+                constants=constants,
+                exact_forward_model=forward_model,
+                max_nfev=refinement_config["max_nfev"],
+                ftol=refinement_config["ftol"],
+                xtol=refinement_config["xtol"],
+                gtol=refinement_config["gtol"],
+            )
+
+            x_hat = refinement_result["x_hat"]
+        else:
+            refinement_result = {
+                "success": False,
+                "status": 0,
+                "message": "Exact refinement disabled.",
+                "nfev": 0,
+                "cost": None,
+            }
+
+            x_hat = x_before_refinement
+
+        y_hat_symbolic = surrogate.predict_one(x_hat)
+        y_hat_exact = forward_model(x_hat, constants)
+
+        symbolic_loss = float(
+            abs(y_hat_symbolic["Vp"] - y_obs["Vp"])
+            + weights["W1"] * abs(y_hat_symbolic["Vs"] - y_obs["Vs"])
+            + weights["W2"] * abs((1.0 / y_hat_symbolic["sigma"]) - (1.0 / y_obs["sigma"]))
+        )
+
+        exact_loss_at_recovered_x = objective(
+            x=x_hat,
+            y_obs=y_obs,
+            constants=constants,
+            weights=weights,
+        )
+        
         exact_loss_at_true_x = objective(
             x=x_true,
             y_obs=y_obs,
@@ -279,6 +313,11 @@ def main():
                     weights=weights,
                 )
             ),
+            "exact_refinement_enabled": bool(refinement_config.get("enabled", False)),
+            "exact_refinement_success": bool(refinement_result["success"]),
+            "exact_refinement_nfev": int(refinement_result["nfev"]),
+            "symbolic_loss_before_refinement": float(symbolic_loss_before_refinement),
+            "exact_loss_before_refinement": float(exact_loss_before_refinement),
         }
 
         for name in variable_order:
@@ -293,10 +332,9 @@ def main():
         print(
             f"[{idx + 1}/{len(clay_values)}] "
             f"C_true={C_true:.1f}, "
-            f"best_symbolic_start={best_symbolic_run['start_index']}, "
-            f"best_exact_start={best_run['start_index']}, "
-            f"symbolic_loss={symbolic_loss:.6g}, "
-            f"exact_loss_hat={exact_loss_at_recovered_x:.6g}, "
+            f"exact_before={exact_loss_before_refinement:.6g}, "
+            f"exact_after={exact_loss_at_recovered_x:.6g}, "
+            f"true_loss={exact_loss_at_true_x:.6g}, "
             f"C_hat={x_hat['C_percent']:.3f}, "
             f"S_b_hat={x_hat['S_b_percent']:.3f}"
         )

@@ -199,3 +199,123 @@ def run_symbolic_multistart_least_squares(
             best = run_info
 
     return best, all_runs
+
+
+def x_dict_to_y_norm(x_dict, lo, hi, variable_order):
+    x_values = np.array(
+        [x_dict[name] for name in variable_order],
+        dtype=float,
+    )
+
+    y_norm = (x_values - lo) / (hi - lo)
+    return np.clip(y_norm, 0.0, 1.0)
+
+
+def exact_residuals_from_y_norm(
+    y_norm,
+    y_obs,
+    lo,
+    hi,
+    variable_order,
+    weights,
+    constants,
+    exact_forward_model,
+):
+    try:
+        x = y_norm_to_x_dict(
+            y_norm=y_norm,
+            lo=lo,
+            hi=hi,
+            variable_order=variable_order,
+        )
+
+        y_pred = exact_forward_model(x, constants)
+
+        sigma_pred = y_pred["sigma"]
+        sigma_obs = y_obs["sigma"]
+
+        if (
+            not np.isfinite(y_pred["Vp"])
+            or not np.isfinite(y_pred["Vs"])
+            or not np.isfinite(sigma_pred)
+            or sigma_pred <= 0.0
+            or sigma_obs <= 0.0
+        ):
+            return np.array([1.0e6, 1.0e6, 1.0e6], dtype=float)
+
+        W1 = weights["W1"]
+        W2 = weights["W2"]
+
+        return np.array(
+            [
+                y_pred["Vp"] - y_obs["Vp"],
+                np.sqrt(W1) * (y_pred["Vs"] - y_obs["Vs"]),
+                np.sqrt(W2) * ((1.0 / sigma_pred) - (1.0 / sigma_obs)),
+            ],
+            dtype=float,
+        )
+
+    except Exception:
+        return np.array([1.0e6, 1.0e6, 1.0e6], dtype=float)
+
+
+def run_exact_refinement_from_x(
+    x_start,
+    y_obs,
+    bounds_dict,
+    variable_order,
+    weights,
+    constants,
+    exact_forward_model,
+    max_nfev,
+    ftol,
+    xtol,
+    gtol,
+):
+    lo, hi = bounds_to_arrays(bounds_dict, variable_order)
+
+    y0 = x_dict_to_y_norm(
+        x_dict=x_start,
+        lo=lo,
+        hi=hi,
+        variable_order=variable_order,
+    )
+
+    dim = len(variable_order)
+    lower_norm = np.zeros(dim, dtype=float)
+    upper_norm = np.ones(dim, dtype=float)
+
+    result = least_squares(
+        fun=exact_residuals_from_y_norm,
+        x0=y0,
+        bounds=(lower_norm, upper_norm),
+        args=(
+            y_obs,
+            lo,
+            hi,
+            variable_order,
+            weights,
+            constants,
+            exact_forward_model,
+        ),
+        max_nfev=int(max_nfev),
+        ftol=float(ftol),
+        xtol=float(xtol),
+        gtol=float(gtol),
+    )
+
+    x_refined = y_norm_to_x_dict(
+        y_norm=result.x,
+        lo=lo,
+        hi=hi,
+        variable_order=variable_order,
+    )
+
+    return {
+        "x_hat": x_refined,
+        "success": bool(result.success),
+        "status": int(result.status),
+        "message": str(result.message),
+        "nfev": int(result.nfev),
+        "cost": float(result.cost),
+    }
