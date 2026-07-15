@@ -51,7 +51,7 @@ optimizer:
   gtol: 1.0e-10
 
 exact_refinement:
-  enabled: true
+  enabled: false # take it false otherwise is optimizing on true forward f 
   method: least_squares
   max_nfev: 2000
   ftol: 1.0e-10
