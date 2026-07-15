@@ -1,5 +1,5 @@
 dataset:
-  name: symbolic_forward_10000
+  name: symbolic_forward_50000_phase2
   output_dir: datasets/symbolic_regression
   output_format: parquet
 
@@ -20,7 +20,7 @@ bounds:
 
 sampling:
   method: random_uniform
-  n_samples: 10000
+  n_samples: 50000
   seed: 123
   train_fraction: 0.8
   shuffle_before_split: true

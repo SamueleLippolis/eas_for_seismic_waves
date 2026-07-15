@@ -197,21 +197,26 @@ def main():
             bounds_dict=bounds,
             variable_order=variable_order,
             weights=weights,
-            n_starts=optimizer_config["n_starts"],
-            seed=int(optimizer_config["seed"]) + idx,
-            max_nfev=optimizer_config["max_nfev"],
-            ftol=optimizer_config["ftol"],
-            xtol=optimizer_config["xtol"],
-            gtol=optimizer_config["gtol"],
+            optimizer_config=optimizer_config,
         )
 
-        best_run, reranked_runs = rerank_symbolic_candidates_by_exact_loss(
-            all_runs=all_runs,
-            surrogate=surrogate,
-            y_obs=y_obs,
-            constants=constants,
-            weights=weights,
-        )
+        selection_config = config.get("selection", {})
+        use_exact_reranking = bool(selection_config.get("use_exact_reranking", False))
+
+        if use_exact_reranking:
+            best_run, selected_runs = rerank_symbolic_candidates_by_exact_loss(
+                all_runs=all_runs,
+                surrogate=surrogate,
+                y_obs=y_obs,
+                constants=constants,
+                weights=weights,
+            )
+            selection_rule = "best_exact_loss_among_symbolic_candidates"
+
+        else:
+            best_run = best_symbolic_run
+            selected_runs = all_runs
+            selection_rule = "best_symbolic_loss"
 
         runtime = perf_counter() - start
 
@@ -245,18 +250,14 @@ def main():
                 "message": "Exact refinement disabled.",
                 "nfev": 0,
                 "cost": None,
-            }
-
-            x_hat = x_before_refinement
+        }
+            
+        x_hat = best_run["x_hat"]
 
         y_hat_symbolic = surrogate.predict_one(x_hat)
         y_hat_exact = forward_model(x_hat, constants)
 
-        symbolic_loss = float(
-            abs(y_hat_symbolic["Vp"] - y_obs["Vp"])
-            + weights["W1"] * abs(y_hat_symbolic["Vs"] - y_obs["Vs"])
-            + weights["W2"] * abs((1.0 / y_hat_symbolic["sigma"]) - (1.0 / y_obs["sigma"]))
-        )
+        symbolic_loss = float(best_run["symbolic_scalar_loss"])
 
         exact_loss_at_recovered_x = objective(
             x=x_hat,
@@ -318,6 +319,9 @@ def main():
             "exact_refinement_nfev": int(refinement_result["nfev"]),
             "symbolic_loss_before_refinement": float(symbolic_loss_before_refinement),
             "exact_loss_before_refinement": float(exact_loss_before_refinement),
+            "selection_rule": selection_rule,
+            "use_exact_reranking": bool(use_exact_reranking),
+            "exact_refinement_enabled": False,
         }
 
         for name in variable_order:

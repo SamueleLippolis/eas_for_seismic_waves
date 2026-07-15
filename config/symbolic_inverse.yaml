@@ -1,5 +1,5 @@
 experiment:
-  name: symbolic_inverse_phase2_least_squares
+  name: symbolic_inverse_phase2_50000
   output_dir: reports/symbolic_inverse
 
 surrogate:
@@ -43,12 +43,15 @@ bounds:
 
 optimizer:
   method: least_squares
-  n_starts: 10 # 50 would be top
+  n_starts: 25 # 50 would be top
   seed: 123
   max_nfev: 2000
   ftol: 1.0e-10
   xtol: 1.0e-10
   gtol: 1.0e-10
+
+selection:
+  use_exact_reranking: false
 
 exact_refinement:
   enabled: false # take it false otherwise is optimizing on true forward f 

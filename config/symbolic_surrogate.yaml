@@ -1,9 +1,9 @@
 surrogate:
-  name: symbolic_forward_phase2_v1
+  name: symbolic_forward_phase2_50000
   output_dir: reports/symbolic_surrogate_checks
 
 dataset:
-  path: datasets/symbolic_regression/symbolic_forward_10000.parquet
+  path: datasets/symbolic_regression/symbolic_forward_50000_phase2.parquet
 
 features:
   source_columns:
