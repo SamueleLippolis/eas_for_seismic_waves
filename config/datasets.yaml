@@ -1,0 +1,34 @@
+dataset:
+  name: symbolic_forward_10000
+  output_dir: datasets/symbolic_regression
+  output_format: parquet
+
+variables:
+  order:
+    - phi_percent
+    - C_percent
+    - S_b_percent
+    - sigma_b_inv
+    - xi
+
+bounds:
+  phi_percent: [0.0, 70.0]
+  C_percent: [0.0, 100.0]
+  S_b_percent: [80.0, 100.0]
+  sigma_b_inv: [0.2, 25.0]
+  xi: [2.5, 2.9]
+
+sampling:
+  method: random_uniform
+  n_samples: 10000
+  seed: 123
+  train_fraction: 0.8
+  shuffle_before_split: true
+
+targets:
+  - Vp
+  - Vs
+  - sigma
+
+options:
+  skip_invalid_outputs: true
