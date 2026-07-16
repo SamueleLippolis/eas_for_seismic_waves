@@ -1,0 +1,70 @@
+experiment:
+  name: nsga2_test
+  output_dir: reports/nsga2
+
+report:
+  base_dir: reports
+  run_name: test
+  save_config: true
+  save_plot: true
+
+variables:
+  order:
+    - phi_percent
+    - C_percent
+    - S_b_percent
+    - sigma_b_inv
+    - xi
+
+base_true_parameters:
+  phi_percent: 41.0
+  S_b_percent: 90.0
+  sigma_b_inv: 0.5
+  xi: 2.7
+
+clay_sweep:
+  variable: C_percent
+  # [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+  values: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+
+synthetic_data:
+  seed: 369
+  noise:
+    type: relative_gaussian
+    relative_std: 0.01
+
+bounds:
+  phi_percent: [0.0, 70.0]
+  C_percent: [0.0, 100.0]
+  S_b_percent: [80.0, 100.0]
+  #sigma_b_inv: [0.2, 25.0]
+  sigma_b_inv: [0.2, 1.0]
+  xi: [2.5, 2.9]
+  
+  
+  
+  
+  
+
+
+
+
+objective:
+  weights:
+    W1: 1.0
+    W2: 100.0
+  epsilon_sigma: 1.0e-12
+
+optimizer:
+  name: nsga2_giulio
+
+optimizers:
+  nsga2_giulio:
+    seed: 123
+    population_size: 200 # 200
+    generations: 300 # 300
+    eliminate_duplicates: true
+    verbose: false
+
+selection:
+  rule: giulio_original_scalar_loss
