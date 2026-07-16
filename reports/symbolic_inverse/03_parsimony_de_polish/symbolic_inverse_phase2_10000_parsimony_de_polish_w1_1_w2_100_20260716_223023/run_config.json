@@ -1,6 +1,6 @@
 {
   "experiment": {
-    "name": "symbolic_inverse_phase2_least_squares",
+    "name": "symbolic_inverse_phase2_10000_parsimony_de_polish_w1_1_w2_100",
     "output_dir": "reports/symbolic_inverse"
   },
   "surrogate": {
@@ -72,9 +72,25 @@
     ]
   },
   "optimizer": {
-    "method": "least_squares",
-    "n_starts": 5,
+    "method": "differential_evolution_polish",
     "seed": 123,
+    "maxiter": 80,
+    "popsize": 10,
+    "tol": 1e-06,
+    "least_squares_polish": {
+      "enabled": true,
+      "max_nfev": 1000,
+      "ftol": 1e-08,
+      "xtol": 1e-08,
+      "gtol": 1e-08
+    }
+  },
+  "selection": {
+    "use_exact_reranking": false
+  },
+  "exact_refinement": {
+    "enabled": false,
+    "method": "least_squares",
     "max_nfev": 2000,
     "ftol": 1e-10,
     "xtol": 1e-10,

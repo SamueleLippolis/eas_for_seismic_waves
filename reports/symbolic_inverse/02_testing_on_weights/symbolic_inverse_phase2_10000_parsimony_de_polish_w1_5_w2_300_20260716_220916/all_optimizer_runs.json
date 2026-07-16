@@ -1,0 +1,104 @@
+{
+  "0": [
+    {
+      "stage": "differential_evolution",
+      "start_index": 0,
+      "x_hat": {
+        "phi_percent": 44.479540744737676,
+        "C_percent": 2.6478184579645294,
+        "S_b_percent": 82.32102471340991,
+        "sigma_b_inv": 0.4312366775286408,
+        "xi": 2.5135867051129845
+      },
+      "symbolic_scalar_loss": 7.0082300812650615,
+      "success": false,
+      "message": "Maximum number of iterations has been exceeded.",
+      "nfev": 1640
+    },
+    {
+      "stage": "least_squares_polish",
+      "start_index": 1,
+      "x_hat": {
+        "phi_percent": 44.38534096010131,
+        "C_percent": 3.020074106062446,
+        "S_b_percent": 82.32102522091866,
+        "sigma_b_inv": 0.43060008201589905,
+        "xi": 2.513704827269591
+      },
+      "symbolic_scalar_loss": 1.643357450120675e-09,
+      "success": true,
+      "status": 3,
+      "message": "`xtol` termination condition is satisfied.",
+      "nfev": 25,
+      "cost": 2.2447752167416455e-19
+    }
+  ],
+  "1": [
+    {
+      "stage": "differential_evolution",
+      "start_index": 0,
+      "x_hat": {
+        "phi_percent": 41.03750987349324,
+        "C_percent": 53.406451606724936,
+        "S_b_percent": 95.71327740091527,
+        "sigma_b_inv": 0.578545118788163,
+        "xi": 2.729607412579216
+      },
+      "symbolic_scalar_loss": 5.825249447631538,
+      "success": false,
+      "message": "Maximum number of iterations has been exceeded.",
+      "nfev": 1640
+    },
+    {
+      "stage": "least_squares_polish",
+      "start_index": 1,
+      "x_hat": {
+        "phi_percent": 41.09015647417275,
+        "C_percent": 52.6625414365736,
+        "S_b_percent": 95.71352347205098,
+        "sigma_b_inv": 0.576300623955436,
+        "xi": 2.7302227445916367
+      },
+      "symbolic_scalar_loss": 7.026880736837882e-05,
+      "success": true,
+      "status": 3,
+      "message": "`xtol` termination condition is satisfied.",
+      "nfev": 45,
+      "cost": 8.113355697053382e-12
+    }
+  ],
+  "2": [
+    {
+      "stage": "differential_evolution",
+      "start_index": 0,
+      "x_hat": {
+        "phi_percent": 40.69141517944,
+        "C_percent": 97.92439010622269,
+        "S_b_percent": 96.04537072683037,
+        "sigma_b_inv": 0.5963075284828481,
+        "xi": 2.609380717341522
+      },
+      "symbolic_scalar_loss": 2.2298308725289093,
+      "success": false,
+      "message": "Maximum number of iterations has been exceeded.",
+      "nfev": 1640
+    },
+    {
+      "stage": "least_squares_polish",
+      "start_index": 1,
+      "x_hat": {
+        "phi_percent": 40.688302192254845,
+        "C_percent": 98.03505488331868,
+        "S_b_percent": 96.04575702489615,
+        "sigma_b_inv": 0.5957821218303248,
+        "xi": 2.6072147752858212
+      },
+      "symbolic_scalar_loss": 0.001859579605119066,
+      "success": true,
+      "status": 3,
+      "message": "`xtol` termination condition is satisfied.",
+      "nfev": 283,
+      "cost": 5.129865656292804e-08
+    }
+  ]
+}

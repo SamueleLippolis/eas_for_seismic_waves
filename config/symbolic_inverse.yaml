@@ -1,5 +1,5 @@
 experiment:
-  name: symbolic_inverse_phase2_10000_parsimony_de_polish
+  name: symbolic_inverse_phase2_10000_parsimony_de_polish_w1_1_w2_100
   output_dir: reports/symbolic_inverse
 
 surrogate:
@@ -21,6 +21,7 @@ base_true_parameters:
 
 clay_sweep:
   variable: C_percent
+  # [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
   values: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 
 synthetic_data:
@@ -52,16 +53,16 @@ optimizer:
   method: differential_evolution_polish
   seed: 123
 
-  maxiter: 150
-  popsize: 15
-  tol: 1.0e-7
+  maxiter: 80
+  popsize: 10
+  tol: 1.0e-6
 
   least_squares_polish:
     enabled: true
-    max_nfev: 2000
-    ftol: 1.0e-10
-    xtol: 1.0e-10
-    gtol: 1.0e-10
+    max_nfev: 1000
+    ftol: 1.0e-8
+    xtol: 1.0e-8
+    gtol: 1.0e-8
 
 selection:
   use_exact_reranking: false

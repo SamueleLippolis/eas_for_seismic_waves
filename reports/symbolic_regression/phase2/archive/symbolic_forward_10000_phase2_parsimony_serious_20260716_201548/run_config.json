@@ -1,0 +1,56 @@
+{
+  "experiment": {
+    "name": "symbolic_forward_10000_phase2_parsimony_serious",
+    "output_dir": "reports/symbolic_regression/phase2"
+  },
+  "dataset": {
+    "path": "datasets/symbolic_regression/symbolic_forward_10000_phase2.parquet"
+  },
+  "training": {
+    "max_train_samples": null,
+    "max_test_samples": null,
+    "seed": 123
+  },
+  "features": {
+    "source_columns": [
+      "phi_percent",
+      "C_percent",
+      "S_b_percent",
+      "sigma_b_inv",
+      "xi"
+    ],
+    "model_names": [
+      "phi",
+      "C",
+      "Sb",
+      "rb",
+      "xi"
+    ]
+  },
+  "targets": [
+    {
+      "name": "Vs",
+      "source_column": "Vs",
+      "transform": "identity"
+    }
+  ],
+  "pysr": {
+    "niterations": 450,
+    "populations": 40,
+    "population_size": 30,
+    "maxsize": 30,
+    "parsimony": 0.01,
+    "model_selection": "best",
+    "random_state": 123,
+    "binary_operators": [
+      "+",
+      "-",
+      "*",
+      "/"
+    ],
+    "unary_operators": [
+      "sqrt",
+      "square"
+    ]
+  }
+}
