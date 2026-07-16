@@ -1,0 +1,53 @@
+{
+  "experiment": {
+    "name": "symbolic_forward_10000_phase2_parsimony_serious",
+    "output_dir": "reports/symbolic_regression/inverse"
+  },
+  "dataset": {
+    "path": "datasets/symbolic_regression/symbolic_forward_10000_phase2.parquet"
+  },
+  "training": {
+    "max_train_samples": null,
+    "max_test_samples": null,
+    "seed": 123
+  },
+  "features": {
+    "source_columns": [
+      "Vp",
+      "Vs",
+      "sigma"
+    ],
+    "model_names": [
+      "Vp",
+      "Vs",
+      "sigma"
+    ]
+  },
+  "targets": [
+    {
+      "name": "C_from_y",
+      "source_column": "C_percent",
+      "transform": "identity"
+    }
+  ],
+  "pysr": {
+    "niterations": 500,
+    "populations": 40,
+    "population_size": 30,
+    "maxsize": 35,
+    "model_selection": "best",
+    "random_state": 123,
+    "binary_operators": [
+      "+",
+      "-",
+      "*",
+      "/"
+    ],
+    "unary_operators": [
+      "sqrt",
+      "square",
+      "log",
+      "exp"
+    ]
+  }
+}

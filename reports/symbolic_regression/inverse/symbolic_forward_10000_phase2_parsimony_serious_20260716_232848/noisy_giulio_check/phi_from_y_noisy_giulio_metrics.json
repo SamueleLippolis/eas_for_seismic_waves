@@ -1,0 +1,20 @@
+{
+  "clean_y": {
+    "mae": 1.5926299657421559,
+    "rmse": 1.8647650016089798,
+    "max_abs_error": 3.1375129055540754,
+    "mean_error": -1.5868440118199891,
+    "r2": null
+  },
+  "noisy_y_obs": {
+    "mae": 1.6004264044943917,
+    "rmse": 1.8734640142276733,
+    "max_abs_error": 3.1400366494070653,
+    "mean_error": -1.5824596052582585,
+    "r2": null
+  },
+  "n": 10,
+  "model_path": "reports/symbolic_regression/inverse/symbolic_forward_10000_phase2_parsimony_serious_20260716_232848/phi_from_y/model.pkl",
+  "summary_path": "reports/giulio_part1/simulated_annealing_giulio/clay_sweep_20260714_135447_011857/summary_results.csv",
+  "clipped_to_bounds": true
+}

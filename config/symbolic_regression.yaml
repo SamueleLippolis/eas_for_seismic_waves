@@ -1,6 +1,6 @@
 experiment:
   name: symbolic_forward_10000_phase2_parsimony_serious
-  output_dir: reports/symbolic_regression/phase2
+  output_dir: reports/symbolic_regression/inverse
 
 dataset:
   path: datasets/symbolic_regression/symbolic_forward_10000_phase2.parquet
@@ -12,31 +12,37 @@ training:
 
 features:
   source_columns:
-    - phi_percent
-    - C_percent
-    - S_b_percent
-    - sigma_b_inv
-    - xi
+    #- phi_percent
+    #- C_percent
+    #- S_b_percent
+    #- sigma_b_inv
+    #- xi
+    - Vp
+    - Vs
+    - sigma 
 
   model_names:
-    - phi
-    - C
-    - Sb
-    - rb
-    - xi
+    #- phi
+    #- C
+    #- Sb
+    #- rb
+    #- xi
+    - Vp
+    - Vs
+    - sigma 
 
 targets:
-  - name: Vp # Vp Vs sigma sqrt_sigma
-    source_column: Vp # Vp Vs sigma 
+  - name: phi_from_y # Vp Vs sigma sqrt_sigma
+    source_column: phi_percent # Vp Vs sigma 
     transform: identity # identity or sqrt
 
 
 pysr:
-  niterations: 550 # [50,500]
+  niterations: 450 # [50,500]
   populations: 40 # [20,40]
   population_size: 30 
   maxsize: 30 # [15,35]
-  parsimony: 0.01
+  parsimony: 0.001
   model_selection: best
   random_state: 123
 
