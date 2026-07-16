@@ -19,7 +19,8 @@ from src.forward_model import forward_model
 from src.objective import objective
 from src.experiment_utils import compute_parameter_errors
 from src.symbolic_surrogate import SymbolicForwardSurrogate
-from src.symbolic_inverse import run_symbolic_multistart_least_squares, run_exact_refinement_from_x
+from src.symbolic_inverse import run_symbolic_multistart_least_squares, run_symbolic_differential_evolution_with_polish, run_exact_refinement_from_x
+
 
 
 
@@ -171,7 +172,7 @@ def main():
     rng_noise = np.random.default_rng(noise_seed)
 
     optimizer_config = config["optimizer"]
-    optimizer_name = "symbolic_least_squares"
+    optimizer_name = optimizer_config.get("method", "least_squares")
 
     rows = []
     all_runs_by_experiment = {}
@@ -191,14 +192,30 @@ def main():
 
         start = perf_counter()
 
-        best_symbolic_run, all_runs = run_symbolic_multistart_least_squares(
-            surrogate=surrogate,
-            y_obs=y_obs,
-            bounds_dict=bounds,
-            variable_order=variable_order,
-            weights=weights,
-            optimizer_config=optimizer_config,
-        )
+        optimizer_method = optimizer_config.get("method", "least_squares")
+
+        if optimizer_method == "least_squares":
+            best_symbolic_run, all_runs = run_symbolic_multistart_least_squares(
+                surrogate=surrogate,
+                y_obs=y_obs,
+                bounds_dict=bounds,
+                variable_order=variable_order,
+                weights=weights,
+                optimizer_config=optimizer_config,
+            )
+
+        elif optimizer_method == "differential_evolution_polish":
+            best_symbolic_run, all_runs = run_symbolic_differential_evolution_with_polish(
+                surrogate=surrogate,
+                y_obs=y_obs,
+                bounds_dict=bounds,
+                variable_order=variable_order,
+                weights=weights,
+                optimizer_config=optimizer_config,
+            )
+
+        else:
+            raise ValueError(f"Unknown symbolic inverse optimizer: {optimizer_method}")
 
         selection_config = config.get("selection", {})
         use_exact_reranking = bool(selection_config.get("use_exact_reranking", False))
@@ -218,16 +235,29 @@ def main():
             selected_runs = all_runs
             selection_rule = "best_symbolic_loss"
 
+        #
         runtime = perf_counter() - start
 
         x_before_refinement = best_run["x_hat"]
 
         symbolic_loss_before_refinement = float(best_run["symbolic_scalar_loss"])
-        exact_loss_before_refinement = float(best_run["exact_loss_at_candidate"])
+
+        if "exact_loss_at_candidate" in best_run:
+            exact_loss_before_refinement = float(best_run["exact_loss_at_candidate"])
+        else:
+            exact_loss_before_refinement = float(
+                objective(
+                    x=x_before_refinement,
+                    y_obs=y_obs,
+                    constants=constants,
+                    weights=weights,
+                )
+            )
 
         refinement_config = config.get("exact_refinement", {"enabled": False})
+        exact_refinement_enabled = bool(refinement_config.get("enabled", False))
 
-        if refinement_config.get("enabled", False):
+        if exact_refinement_enabled:
             refinement_result = run_exact_refinement_from_x(
                 x_start=x_before_refinement,
                 y_obs=y_obs,
@@ -243,6 +273,7 @@ def main():
             )
 
             x_hat = refinement_result["x_hat"]
+
         else:
             refinement_result = {
                 "success": False,
@@ -250,21 +281,24 @@ def main():
                 "message": "Exact refinement disabled.",
                 "nfev": 0,
                 "cost": None,
-        }
-            
-        x_hat = best_run["x_hat"]
+            }
+
+            x_hat = x_before_refinement
 
         y_hat_symbolic = surrogate.predict_one(x_hat)
         y_hat_exact = forward_model(x_hat, constants)
 
         symbolic_loss = float(best_run["symbolic_scalar_loss"])
 
-        exact_loss_at_recovered_x = objective(
-            x=x_hat,
-            y_obs=y_obs,
-            constants=constants,
-            weights=weights,
+        exact_loss_at_recovered_x = float(
+            objective(
+                x=x_hat,
+                y_obs=y_obs,
+                constants=constants,
+                weights=weights,
+            )
         )
+        #
         
         exact_loss_at_true_x = objective(
             x=x_true,
@@ -302,7 +336,7 @@ def main():
             "Vp_hat_exact": float(y_hat_exact["Vp"]),
             "Vs_hat_exact": float(y_hat_exact["Vs"]),
             "sigma_hat_exact": float(y_hat_exact["sigma"]),
-            "selection_rule": "best_exact_loss_among_symbolic_candidates",
+            "selection_rule":  selection_rule,
             "best_symbolic_start_index": int(best_symbolic_run["start_index"]),
             "best_exact_start_index": int(best_run["start_index"]),
             "best_symbolic_loss": float(best_symbolic_run["symbolic_scalar_loss"]),
@@ -314,14 +348,12 @@ def main():
                     weights=weights,
                 )
             ),
-            "exact_refinement_enabled": bool(refinement_config.get("enabled", False)),
+            "exact_refinement_enabled": bool(exact_refinement_enabled),
             "exact_refinement_success": bool(refinement_result["success"]),
             "exact_refinement_nfev": int(refinement_result["nfev"]),
             "symbolic_loss_before_refinement": float(symbolic_loss_before_refinement),
             "exact_loss_before_refinement": float(exact_loss_before_refinement),
-            "selection_rule": selection_rule,
             "use_exact_reranking": bool(use_exact_reranking),
-            "exact_refinement_enabled": False,
         }
 
         for name in variable_order:
@@ -331,7 +363,7 @@ def main():
         row.update(flat_errors)
         rows.append(row)
 
-        all_runs_by_experiment[str(idx)] = reranked_runs
+        all_runs_by_experiment[str(idx)] = selected_runs
 
         print(
             f"[{idx + 1}/{len(clay_values)}] "

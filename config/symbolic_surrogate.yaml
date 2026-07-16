@@ -1,9 +1,9 @@
 surrogate:
-  name: symbolic_forward_phase2_50000
+  name: symbolic_forward_phase2_parsimony
   output_dir: reports/symbolic_surrogate_checks
 
 dataset:
-  path: datasets/symbolic_regression/symbolic_forward_50000_phase2.parquet
+  path: datasets/symbolic_regression/symbolic_forward_10000_phase2.parquet
 
 features:
   source_columns:
@@ -22,13 +22,13 @@ features:
 
 models:
   Vp:
-    path: reports/symbolic_regression/phase2/symbolic_forward_10000_quick_20260715_104711/Vp/model.pkl
+    path: reports/symbolic_regression/phase2/symbolic_forward_10000_phase2_parsimony_20260716_114224/Vp/model.pkl
     output_transform: identity
 
   Vs:
-    path: reports/symbolic_regression/phase2/symbolic_forward_10000_quick_20260715_105308/Vs/model.pkl
+    path: reports/symbolic_regression/phase2/symbolic_forward_10000_phase2_parsimony_20260716_114421/Vs/model.pkl
     output_transform: identity
 
   sqrt_sigma:
-    path: reports/symbolic_regression/phase2/symbolic_forward_10000_serious_20260715_112420/sqrt_sigma/model.pkl
+    path: reports/symbolic_regression/phase2/symbolic_forward_10000_phase2_parsimony_serious_20260716_121900/sqrt_sigma/model.pkl
     output_transform: square
