@@ -60,7 +60,7 @@ optimizers:
     seed_add_clay_offset: true
 
     n_particles: 1996
-    n_iters: 5000 #500
+    n_iters: 500 
 
     tol: 1.0e-9
 
