@@ -1,5 +1,5 @@
 experiment:
-  name: symbolic_forward_10000_phase2_parsimony
+  name: symbolic_forward_10000_phase2_parsimony_serious
   output_dir: reports/symbolic_regression/phase2
 
 dataset:
@@ -26,16 +26,16 @@ features:
     - xi
 
 targets:
-  - name: Vp # Vp Vs sigma sqrt_sigma
-    source_column: Vp # Vp Vs sigma 
-    transform: identity # identity or sqrt
+  - name: sqrt_sigma # Vp Vs sigma sqrt_sigma
+    source_column: sigma # Vp Vs sigma 
+    transform: sqrt # identity or sqrt
 
 
 pysr:
-  niterations: 150 # [50,500]
-  populations: 20 # [20,40]
+  niterations: 450 # [50,500]
+  populations: 40 # [20,40]
   population_size: 30 
-  maxsize: 15 # [15,35]
+  maxsize: 30 # [15,35]
   parsimony: 0.01
   model_selection: best
   random_state: 123
