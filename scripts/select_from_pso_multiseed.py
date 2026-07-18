@@ -1,17 +1,15 @@
 from pathlib import Path
 import argparse
+import sys
 
 import numpy as np
 import pandas as pd
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT))
 
-PARAMS = [
-    "phi_percent_hat",
-    "C_percent_hat",
-    "S_b_percent_hat",
-    "sigma_b_inv_hat",
-    "xi_hat",
-]
+from src.config_utils import load_yaml
+
 
 ERROR_COLS = [
     "phi_percent_abs_error_percentage_points",
@@ -23,106 +21,141 @@ ERROR_COLS = [
 
 
 def safe_scale(values, min_scale=1.0e-12):
-    """
-    Robust scale used for normalized distance.
-
-    Prefer std. If std is almost zero, use range.
-    If range is also almost zero, return 1.0 to avoid division by zero.
-    """
     std = float(values.std(ddof=0))
-
     if np.isfinite(std) and std > min_scale:
         return std
 
     value_range = float(values.max() - values.min())
-
     if np.isfinite(value_range) and value_range > min_scale:
         return value_range
 
     return 1.0
 
 
-def add_central_score(feasible):
-    """
-    Add score measuring distance from the median candidate cloud.
-
-    Lower score means the candidate is more central among feasible PSO solutions.
-    """
-    feasible = feasible.copy()
-
-    medians = {
-        param: float(feasible[param].median())
-        for param in PARAMS
-    }
-
-    scales = {
-        param: safe_scale(feasible[param])
-        for param in PARAMS
-    }
-
+def central_score(feasible, params):
     score = np.zeros(len(feasible), dtype=float)
 
-    for param in PARAMS:
-        score += np.abs(feasible[param] - medians[param]) / scales[param]
+    for param in params:
+        median = float(feasible[param].median())
+        scale = safe_scale(feasible[param])
+        score += np.abs(feasible[param] - median) / scale
 
-    feasible["central_score"] = score
-
-    for param in PARAMS:
-        feasible[f"{param}_median_feasible"] = medians[param]
-        feasible[f"{param}_scale_feasible"] = scales[param]
-
-    return feasible
+    return score
 
 
-def select_best_loss(group):
-    return group.loc[group["loss_hat"].idxmin()].copy()
-
-
-def select_oracle_nonfair(group):
+def avoid_bounds_score(feasible, bounds, margin_fraction):
     """
-    Non-fair diagnostic selection.
-    Uses x_true through oracle_score.
+    Penalize candidates close to parameter bounds.
+
+    distance_to_bound is normalized in [0, 0.5].
+    If distance is larger than margin_fraction, penalty is zero.
     """
-    return group.loc[group["oracle_score"].idxmin()].copy()
+    score = np.zeros(len(feasible), dtype=float)
+
+    for param, bound_pair in bounds.items():
+        lo, hi = float(bound_pair[0]), float(bound_pair[1])
+        width = hi - lo
+
+        if width <= 0:
+            raise ValueError(f"Invalid bounds for {param}: {bound_pair}")
+
+        x = feasible[param].astype(float)
+
+        dist_low = (x - lo) / width
+        dist_high = (hi - x) / width
+        dist_to_nearest_bound = np.minimum(dist_low, dist_high)
+
+        penalty = np.maximum(
+            0.0,
+            float(margin_fraction) - dist_to_nearest_bound,
+        ) / float(margin_fraction)
+
+        score += penalty
+
+    return score
 
 
-def select_central_candidate(group, loss_epsilon):
-    """
-    Fair rule.
+def compute_rule_score(feasible, rule):
+    rule_type = rule["type"]
 
-    1. Keep candidates with loss <= min_loss + epsilon.
-    2. Among them, choose the candidate closest to the median of the feasible cloud.
-    """
+    if rule_type == "central":
+        return central_score(
+            feasible=feasible,
+            params=rule["params"],
+        )
+
+    if rule_type == "avoid_bounds":
+        return avoid_bounds_score(
+            feasible=feasible,
+            bounds=rule["bounds"],
+            margin_fraction=float(rule.get("margin_fraction", 0.15)),
+        )
+
+    if rule_type == "combined":
+        total_score = np.zeros(len(feasible), dtype=float)
+
+        for component in rule["components"]:
+            weight = float(component.get("weight", 1.0))
+            component_score = compute_rule_score(feasible, component)
+            total_score += weight * component_score
+
+        return total_score
+
+    raise ValueError(f"Cannot compute score for rule type: {rule_type}")
+
+
+def select_candidate(group, rule, loss_epsilon):
+    rule_type = rule["type"]
+
+    if rule_type == "best_loss":
+        selected = group.loc[group["loss_hat"].idxmin()].copy()
+        selected["selection_score"] = 0.0
+        return selected
+
+    if rule_type == "oracle_nonfair":
+        selected = group.loc[group["oracle_score"].idxmin()].copy()
+        selected["selection_score"] = 0.0
+        return selected
+
     min_loss = float(group["loss_hat"].min())
     feasible = group[group["loss_hat"] <= min_loss + loss_epsilon].copy()
 
     if len(feasible) == 0:
         feasible = group.copy()
 
-    feasible = add_central_score(feasible)
+    feasible["selection_score"] = compute_rule_score(feasible, rule)
 
-    return feasible.loc[feasible["central_score"].idxmin()].copy()
+    # Tie-breaker: if two candidates have identical selection score,
+    # prefer the lower observed loss.
+    feasible = feasible.sort_values(
+        by=["selection_score", "loss_hat"],
+        ascending=[True, True],
+    )
+
+    return feasible.iloc[0].copy()
 
 
-def build_selection_row(C_true, selection_name, selected, n_candidates, n_feasible):
+def build_selection_row(C_true, rule_name, selected, n_candidates, n_feasible):
     row = {
         "C_true": float(C_true),
-        "selection": selection_name,
+        "selection": rule_name,
         "n_candidates": int(n_candidates),
         "n_feasible": int(n_feasible),
         "seed_index": int(selected["seed_index"]),
         "seed": int(selected["seed"]),
         "loss_hat": float(selected["loss_hat"]),
         "oracle_score": float(selected["oracle_score"]),
+        "selection_score": float(selected.get("selection_score", np.nan)),
     }
 
-    if "central_score" in selected:
-        row["central_score"] = float(selected["central_score"])
-    else:
-        row["central_score"] = np.nan
+    param_cols = [
+        col for col in selected.index
+        if col.endswith("_hat")
+        and col not in ["Vp_hat", "Vs_hat", "sigma_hat"]
+    ]
 
-    for param in PARAMS:
-        row[param] = float(selected[param])
+    for col in param_cols:
+        row[col] = float(selected[col])
 
     for error_col in ERROR_COLS:
         row[error_col] = float(selected[error_col])
@@ -130,31 +163,28 @@ def build_selection_row(C_true, selection_name, selected, n_candidates, n_feasib
     return row
 
 
-def compare_selection_rules(df, loss_epsilon):
+def compare_selection_rules(df, rules, loss_epsilon):
     rows = []
 
     for C_true, group in df.groupby("C_true"):
         min_loss = float(group["loss_hat"].min())
         feasible = group[group["loss_hat"] <= min_loss + loss_epsilon]
 
-        best_loss = select_best_loss(group)
-        central_candidate = select_central_candidate(group, loss_epsilon)
-        oracle_nonfair = select_oracle_nonfair(group)
+        for rule in rules:
+            selected = select_candidate(
+                group=group,
+                rule=rule,
+                loss_epsilon=loss_epsilon,
+            )
 
-        selections = [
-            ("best_loss", best_loss),
-            ("central_candidate", central_candidate),
-            ("oracle_nonfair", oracle_nonfair),
-        ]
-
-        for selection_name, selected in selections:
             row = build_selection_row(
                 C_true=C_true,
-                selection_name=selection_name,
+                rule_name=rule["name"],
                 selected=selected,
                 n_candidates=len(group),
                 n_feasible=len(feasible),
             )
+
             rows.append(row)
 
     return pd.DataFrame(rows)
@@ -180,39 +210,27 @@ def summarize_selection_results(selection_df):
 
         rows.append(row)
 
-    summary_df = pd.DataFrame(rows)
-
-    selection_order = {
-        "best_loss": 0,
-        "central_candidate": 1,
-        "oracle_nonfair": 2,
-    }
-
-    summary_df["selection_order"] = summary_df["selection"].map(selection_order)
-    summary_df = summary_df.sort_values("selection_order").drop(columns=["selection_order"])
-
-    return summary_df
+    return pd.DataFrame(rows)
 
 
 def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--run-dir",
-        required=True,
-        help="Path to PSO multi-seed report directory.",
-    )
-
-    parser.add_argument(
-        "--loss-epsilon",
-        type=float,
-        default=1.0e-6,
-        help="Candidates with loss <= min_loss + epsilon are feasible.",
+        "--config",
+        default="config/selection_rules.yaml",
+        help="Path to selection config.",
     )
 
     args = parser.parse_args()
 
-    run_dir = Path(args.run_dir)
+    config = load_yaml(ROOT / args.config)
+
+    run_dir = ROOT / config["input"]["run_dir"]
+    loss_epsilon = float(config["input"].get("loss_epsilon", 1.0e-6))
+    output_subdir = config["output"].get("subdir", "selection")
+    rules = config["rules"]
+
     input_path = run_dir / "pso_multiseed_best_all.csv"
 
     if not input_path.exists():
@@ -220,12 +238,13 @@ def main():
 
     df = pd.read_csv(input_path)
 
-    output_dir = run_dir / "selection"
+    output_dir = run_dir / output_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     selection_df = compare_selection_rules(
         df=df,
-        loss_epsilon=args.loss_epsilon,
+        rules=rules,
+        loss_epsilon=loss_epsilon,
     )
 
     summary_df = summarize_selection_results(selection_df)

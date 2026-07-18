@@ -1,0 +1,50 @@
+input:
+  run_dir: reports/pso_multiseed/clay_sweep_20260718_151716_121517
+  loss_epsilon: 1.0e-6
+
+output:
+  subdir: selection
+
+rules:
+  - name: best_loss
+    type: best_loss
+
+  - name: central_all
+    type: central
+    params:
+      - phi_percent_hat
+      - C_percent_hat
+      - S_b_percent_hat
+      - sigma_b_inv_hat
+      - xi_hat
+
+  - name: central_core
+    type: central
+    params:
+      - phi_percent_hat
+      - C_percent_hat
+      - xi_hat
+
+  - name: avoid_xi_bound
+    type: avoid_bounds
+    bounds:
+      xi_hat: [2.5, 2.9]
+    margin_fraction: 0.15
+
+  - name: central_core_avoid_xi
+    type: combined
+    components:
+      - type: central
+        weight: 1.0
+        params:
+          - phi_percent_hat
+          - C_percent_hat
+          - xi_hat
+      - type: avoid_bounds
+        weight: 1.0
+        bounds:
+          xi_hat: [2.5, 2.9]
+        margin_fraction: 0.15
+
+  - name: oracle_nonfair
+    type: oracle_nonfair
