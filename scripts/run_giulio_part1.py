@@ -185,6 +185,62 @@ def flatten_errors(errors):
 
     return flat
 
+def build_pso_archive_rows(
+    archive_candidates,
+    variable_order,
+    constants,
+    y_obs,
+    x_true,
+):
+    """
+    Convert PSO archive candidates into flat rows for CSV.
+    """
+    rows = []
+
+    for candidate in archive_candidates:
+        x_hat = x_vector_to_dict(
+            candidate["x_vector"],
+            variable_order,
+        )
+
+        y_hat = forward_model(x_hat, constants)
+
+        residuals = {
+            key: float(y_hat[key] - y_obs[key])
+            for key in ["Vp", "Vs", "sigma"]
+        }
+
+        errors = compute_parameter_errors(
+            x_hat=x_hat,
+            x_true=x_true,
+        )
+
+        flat_errors = flatten_errors(errors)
+
+        row = {
+            "candidate_index": int(candidate["candidate_index"]),
+            "source": candidate["source"],
+            "source_index": candidate["source_index"],
+            "loss_hat": float(candidate["loss"]),
+            "archive_threshold": float(candidate["archive_threshold"]),
+            "best_loss_reference": float(candidate["best_loss_reference"]),
+            "Vp_hat": float(y_hat["Vp"]),
+            "Vs_hat": float(y_hat["Vs"]),
+            "sigma_hat": float(y_hat["sigma"]),
+            "Vp_residual": residuals["Vp"],
+            "Vs_residual": residuals["Vs"],
+            "sigma_residual": residuals["sigma"],
+        }
+
+        for name in variable_order:
+            row[f"{name}_hat"] = float(x_hat[name])
+            row[f"{name}_true"] = float(x_true[name])
+
+        row.update(flat_errors)
+
+        rows.append(row)
+
+    return rows
 
 def main():
     constants = load_yaml(CONSTANTS_PATH)
@@ -286,9 +342,28 @@ def main():
             x_hat=x_hat,
             x_true=x_true,
         )
-
+        
         flat_errors = flatten_errors(errors)
+        
+        archive_candidates = optimizer_result.get("archive_candidates", [])
 
+        archive_rows = build_pso_archive_rows(
+            archive_candidates=archive_candidates,
+            variable_order=variable_order,
+            constants=constants,
+            y_obs=y_obs,
+            x_true=x_true,
+        )
+
+        if len(archive_rows) > 0:
+            clay_report_dir = run_dir / f"C_{int(round(C_true)):03d}"
+            clay_report_dir.mkdir(parents=True, exist_ok=True)
+
+            save_summary_csv(
+                archive_rows,
+                clay_report_dir / "pso_archive_candidates.csv",
+            )
+        
         row = {
             "experiment_index": idx,
             "C_true": C_true,
@@ -296,6 +371,7 @@ def main():
             "run_time_seconds": run_time_seconds,
             "loss_at_true_x": float(loss_at_true_x),
             "loss_at_recovered_x": float(optimizer_result["best_loss"]),
+            "n_archive_candidates": int(len(archive_rows)),
             "Vp_true": float(y_true["Vp"]),
             "Vs_true": float(y_true["Vs"]),
             "sigma_true": float(y_true["sigma"]),

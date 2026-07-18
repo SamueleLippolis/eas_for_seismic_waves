@@ -20,7 +20,7 @@ base_true_parameters:
 clay_sweep:
   variable: C_percent
   # [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
-  values: [30.0, 80.0]
+  values: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 
 synthetic_data:
   seed: 369 
@@ -39,6 +39,12 @@ bounds:
   S_b_percent: [80.0, 100.0]
   sigma_b_inv: [0.2, 25.0]
   xi: [2.5, 2.9]
+
+multiseed:
+  n_seeds: 30
+  seed_base: 369
+  seed_stride: 10000
+  add_clay_offset: true
 
 optimizer:
   name: pso_giulio

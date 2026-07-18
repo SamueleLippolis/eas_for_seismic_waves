@@ -55,7 +55,7 @@ def run_optimizer(optimizer_name, optimizer_config, vector_objective, bounds):
         }
     
     if optimizer_name == "pso_giulio":
-        best_x_vector, best_loss, history, stop_iter, stop_reason = run_pso_giulio(
+        best_x_vector, best_loss, history, stop_iter, stop_reason, archive_candidates = run_pso_giulio(
             objective_function=vector_objective,
             bounds=bounds,
             **optimizer_config,
@@ -67,6 +67,7 @@ def run_optimizer(optimizer_name, optimizer_config, vector_objective, bounds):
             "history": history,
             "stop_iter": stop_iter,
             "stop_reason": stop_reason,
+            "archive_candidates": archive_candidates,
         }
 
     if optimizer_name == "cmaes_giulio":

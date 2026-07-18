@@ -62,6 +62,123 @@ def outside_01(y_row):
 
     return False
 
+def build_pso_archive(
+    Y,
+    PbestY,
+    Fpbest,
+    gbestY,
+    f_gbest,
+    objective_function,
+    lo,
+    hi,
+    archive_config,
+):
+    """
+    Build an archive of good PSO candidates.
+
+    Candidates can come from:
+      - global best
+      - final swarm positions
+      - personal best positions
+
+    A candidate is saved if:
+      loss <= best_loss + epsilon
+    """
+
+    if archive_config is None:
+        return []
+
+    if not bool(archive_config.get("enabled", False)):
+        return []
+
+    threshold_mode = archive_config.get("threshold_mode", "min_plus_epsilon")
+    epsilon = float(archive_config.get("epsilon", 1.0e-6))
+    max_candidates = archive_config.get("max_candidates", 500)
+
+    save_final_swarm = bool(archive_config.get("save_final_swarm", True))
+    save_personal_bests = bool(archive_config.get("save_personal_bests", True))
+
+    if threshold_mode == "min_plus_epsilon":
+        threshold = float(f_gbest) + epsilon
+    elif threshold_mode == "absolute":
+        threshold = float(archive_config["threshold"])
+    else:
+        raise ValueError(f"Unknown archive threshold_mode: {threshold_mode}")
+
+    candidates_by_key = {}
+
+    def add_candidate(source, source_index, y_vector, loss=None):
+        y_vector = np.asarray(y_vector, dtype=np.float64)
+
+        if outside_01(y_vector):
+            return
+
+        x_vector = map_y_to_x(y_vector, lo, hi)
+
+        if loss is None:
+            loss = objective_function(x_vector)
+
+        if not np.isfinite(loss):
+            return
+
+        loss = float(loss)
+
+        if loss > threshold:
+            return
+
+        # Avoid exact duplicated candidates.
+        key = tuple(np.round(x_vector, 12))
+
+        candidate = {
+            "source": source,
+            "source_index": None if source_index is None else int(source_index),
+            "loss": loss,
+            "x_vector": x_vector.tolist(),
+            "y_vector": y_vector.tolist(),
+        }
+
+        if key not in candidates_by_key or loss < candidates_by_key[key]["loss"]:
+            candidates_by_key[key] = candidate
+
+    # Always include global best.
+    add_candidate(
+        source="global_best",
+        source_index=None,
+        y_vector=gbestY,
+        loss=f_gbest,
+    )
+
+    if save_final_swarm:
+        for i in range(Y.shape[0]):
+            add_candidate(
+                source="final_swarm",
+                source_index=i,
+                y_vector=Y[i, :],
+                loss=None,
+            )
+
+    if save_personal_bests:
+        for i in range(PbestY.shape[0]):
+            add_candidate(
+                source="personal_best",
+                source_index=i,
+                y_vector=PbestY[i, :],
+                loss=Fpbest[i],
+            )
+
+    candidates = list(candidates_by_key.values())
+    candidates = sorted(candidates, key=lambda item: item["loss"])
+
+    if max_candidates is not None:
+        candidates = candidates[: int(max_candidates)]
+
+    for idx, candidate in enumerate(candidates):
+        candidate["candidate_index"] = int(idx)
+        candidate["archive_threshold"] = float(threshold)
+        candidate["best_loss_reference"] = float(f_gbest)
+
+    return candidates
+
 
 def run_pso_giulio(
     objective_function,
@@ -82,6 +199,7 @@ def run_pso_giulio(
     eps_improve=1.0e-6,
     patience=1000,
     history_interval=10,
+    archive=None,
 ):
     """
     Giulio-style PSO in normalized space y in [0, 1]^d.
@@ -167,12 +285,33 @@ def run_pso_giulio(
         }
     ]
 
+    
     if f_gbest <= tol:
         stop_reason = 1
         stop_iter = 0
         best_x = map_y_to_x(gbestY, lo, hi)
-        return best_x.tolist(), float(f_gbest), history, stop_iter, stop_reason
 
+        archive_candidates = build_pso_archive(
+            Y=Y,
+            PbestY=PbestY,
+            Fpbest=Fpbest,
+            gbestY=gbestY,
+            f_gbest=f_gbest,
+            objective_function=objective_function,
+            lo=lo,
+            hi=hi,
+            archive_config=archive,
+        )
+
+        return (
+            best_x.tolist(),
+            float(f_gbest),
+            history,
+            stop_iter,
+            stop_reason,
+            archive_candidates,
+        )
+    
     best_seen = float(f_gbest)
     no_improve = 0
 
@@ -257,7 +396,27 @@ def run_pso_giulio(
             "stop_reason": STOP_REASON_LABELS[stop_reason],
         }
     )
-
+    
     best_x = map_y_to_x(gbestY, lo, hi)
 
-    return best_x.tolist(), float(f_gbest), history, stop_iter, stop_reason
+    archive_candidates = build_pso_archive(
+        Y=Y,
+        PbestY=PbestY,
+        Fpbest=Fpbest,
+        gbestY=gbestY,
+        f_gbest=f_gbest,
+        objective_function=objective_function,
+        lo=lo,
+        hi=hi,
+        archive_config=archive,
+    )
+
+    return (
+        best_x.tolist(),
+        float(f_gbest),
+        history,
+        stop_iter,
+        stop_reason,
+        archive_candidates,
+    )
+    
