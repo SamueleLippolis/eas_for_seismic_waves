@@ -32,9 +32,9 @@ features:
     - sigma 
 
 targets:
-  - name: phi_from_y # Vp Vs sigma sqrt_sigma
-    source_column: phi_percent # Vp Vs sigma 
-    transform: identity # identity or sqrt
+  - name: log_sigma_b_inv_from_y # Vp Vs sigma sqrt_sigma
+    source_column: sigma_b_inv # Vp Vs sigma 
+    transform: log # identity or sqrt
 
 
 pysr:
@@ -42,7 +42,7 @@ pysr:
   populations: 40 # [20,40]
   population_size: 30 
   maxsize: 30 # [15,35]
-  parsimony: 0.001
+  parsimony: 0.01
   model_selection: best
   random_state: 123
 

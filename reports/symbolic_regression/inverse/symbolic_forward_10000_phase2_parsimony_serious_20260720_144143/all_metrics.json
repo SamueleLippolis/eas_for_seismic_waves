@@ -1,0 +1,17 @@
+{
+  "log_sigma_b_inv_from_y": {
+    "target": "log_sigma_b_inv_from_y",
+    "source_column": "sigma_b_inv",
+    "transform": "log",
+    "train": {
+      "mae": 0.40600138658302454,
+      "rmse": 0.5612619218741217,
+      "r2": 0.6179614360029038
+    },
+    "test": {
+      "mae": 0.39977953506238395,
+      "rmse": 0.5581412365640452,
+      "r2": 0.6272598124139982
+    }
+  }
+}

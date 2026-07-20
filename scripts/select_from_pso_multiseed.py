@@ -32,13 +32,18 @@ def safe_scale(values, min_scale=1.0e-12):
     return 1.0
 
 
-def central_score(feasible, params):
+def central_score(feasible, params, weights=None):
     score = np.zeros(len(feasible), dtype=float)
+
+    if weights is None:
+        weights = {}
 
     for param in params:
         median = float(feasible[param].median())
         scale = safe_scale(feasible[param])
-        score += np.abs(feasible[param] - median) / scale
+        weight = float(weights.get(param, 1.0))
+
+        score += weight * np.abs(feasible[param] - median) / scale
 
     return score
 
@@ -82,7 +87,8 @@ def compute_rule_score(feasible, rule):
         return central_score(
             feasible=feasible,
             params=rule["params"],
-        )
+            weights=rule.get("weights"),
+    )
 
     if rule_type == "avoid_bounds":
         return avoid_bounds_score(

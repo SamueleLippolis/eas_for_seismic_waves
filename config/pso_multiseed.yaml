@@ -12,15 +12,20 @@ variables:
     - xi
 
 base_true_parameters:
-  phi_percent: 41.0
-  S_b_percent: 90.0
-  sigma_b_inv: 0.5
+  phi_percent: 41.0     # STANDARD GIULIO
+  S_b_percent: 90.0 
+  sigma_b_inv: 0.5 
   xi: 2.7
+  #phi_percent: 32.0 
+  #S_b_percent: 87.0
+  #sigma_b_inv: 1.2
+  #xi: 2.62
+
 
 clay_sweep:
   variable: C_percent
   # [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
-  values: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+  values: [40]
 
 synthetic_data:
   seed: 369 
@@ -34,10 +39,15 @@ objective:
     W2: 100.0
 
 bounds:
+  #phi_percent: [0.0, 70.0]
+  #C_percent: [0.0, 100.0]
+  #S_b_percent: [80.0, 100.0]
+  #sigma_b_inv: [0.2, 25.0]
+  #xi: [2.5, 2.9]
   phi_percent: [0.0, 70.0]
   C_percent: [0.0, 100.0]
   S_b_percent: [80.0, 100.0]
-  sigma_b_inv: [0.2, 25.0]
+  sigma_b_inv: [0.2, 3.0]
   xi: [2.5, 2.9]
 
 multiseed:

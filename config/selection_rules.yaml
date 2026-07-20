@@ -1,5 +1,5 @@
 input:
-  run_dir: reports/pso_multiseed/clay_sweep_20260718_151716_121517
+  run_dir: reports/pso_multiseed/clay_sweep_20260720_154528_448551
   loss_epsilon: 1.0e-6
 
 output:
@@ -48,3 +48,18 @@ rules:
 
   - name: oracle_nonfair
     type: oracle_nonfair
+  
+  - name: weighted_central_balanced
+    type: central
+    params:
+      - phi_percent_hat
+      - C_percent_hat
+      - S_b_percent_hat
+      - sigma_b_inv_hat
+      - xi_hat
+    weights:
+      phi_percent_hat: 1.0
+      C_percent_hat: 1.0
+      xi_hat: 1.0
+      S_b_percent_hat: 0.25
+      sigma_b_inv_hat: 0.25

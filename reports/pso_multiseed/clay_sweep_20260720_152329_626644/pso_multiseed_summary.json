@@ -1,0 +1,8 @@
+{
+    "experiment_name": "giulio_part1_clay_sweep",
+    "optimizer": "pso_giulio",
+    "n_clay_values": 1,
+    "n_seeds": 30,
+    "total_run_time_seconds": 316.0711019320006,
+    "run_dir": "/home/samuele/projects/eas_for_seismic_waves/reports/pso_multiseed/clay_sweep_20260720_152329_626644"
+}
